@@ -10,13 +10,24 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 )
 
 func main() {
 
+	algorithm := os.Args[1]
+	arg2 := os.Args[2]
+
+	bitSize, err := strconv.Atoi(arg2)
+	if err != nil {
+		fmt.Printf("bitSize must be an integer and not %T!\n", bitSize)
+		os.Exit(1)
+	}
+
 	// If the file doesn't exist, create it, or append to the file
-	f, err := os.OpenFile("rsa2048.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	filename := fmt.Sprintf("%s%d.csv", algorithm, bitSize)
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -27,9 +38,8 @@ func main() {
 	}
 
 	reader := rand.Reader
-	bitSize := 2048
 
-	for id := 0; id < 100; id++ {
+	for id := 0; id < 10; id++ {
 
 		start := time.Now()
 		key, rsaerr := rsa.GenerateKey(reader, bitSize)
