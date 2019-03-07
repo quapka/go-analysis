@@ -1,1 +1,7 @@
 virtual/
+
+*.csv
+
+*.pyo
+*.pyc
+__pycache__/
