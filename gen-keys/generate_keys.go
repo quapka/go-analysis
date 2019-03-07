@@ -18,10 +18,17 @@ func main() {
 
 	algorithm := os.Args[1]
 	arg2 := os.Args[2]
+	arg3 := os.Args[3]
 
 	bitSize, err := strconv.Atoi(arg2)
 	if err != nil {
 		fmt.Printf("bitSize must be an integer and not %T!\n", arg2)
+		os.Exit(1)
+	}
+
+	keyCount, err := strconv.Atoi(arg3)
+	if err != nil {
+		fmt.Printf("keyCount must be an integer and not %T!\n", arg3)
 		os.Exit(1)
 	}
 
@@ -39,7 +46,7 @@ func main() {
 
 	reader := rand.Reader
 
-	for id := 0; id < 10; id++ {
+	for id := 0; id < keyCount; id++ {
 
 		start := time.Now()
 		key, rsaerr := rsa.GenerateKey(reader, bitSize)
