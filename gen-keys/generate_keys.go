@@ -21,7 +21,7 @@ func main() {
 
 	bitSize, err := strconv.Atoi(arg2)
 	if err != nil {
-		fmt.Printf("bitSize must be an integer and not %T!\n", bitSize)
+		fmt.Printf("bitSize must be an integer and not %T!\n", arg2)
 		os.Exit(1)
 	}
 
