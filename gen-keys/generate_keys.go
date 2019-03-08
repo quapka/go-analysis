@@ -107,7 +107,6 @@ func getRSAData(reader io.Reader, bitSize int) (data string, err error) {
 	t1 := end.Sub(start)
 
 	if err != nil {
-		fmt.Println("We got a problem")
 		return "", err
 	}
 
