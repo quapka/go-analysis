@@ -58,7 +58,7 @@ func main() {
 	}
 
 	// Write header
-	if _, err := f.Write([]byte("id;n;e;d;p;q;t1\n")); err != nil {
+	if _, err := f.Write([]byte("id;n;e;d;p;q;t1;\n")); err != nil {
 		log.Fatal(err)
 	}
 
