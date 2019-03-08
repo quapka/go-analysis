@@ -45,26 +45,35 @@ func main() {
 	}
 
 	reader := rand.Reader
+	dataRow := ""
 
 	for id := 0; id < keyCount; id++ {
+		dataRow = fmt.Sprintf("%d;", id)
 
-		start := time.Now()
-		key, rsaerr := rsa.GenerateKey(reader, bitSize)
-		end := time.Now()
-		t1 := end.Sub(start)
+		if algorithm == "rsa" {
+			start := time.Now()
+			key, rsaerr := rsa.GenerateKey(reader, bitSize)
+			end := time.Now()
+			t1 := end.Sub(start)
 
-		checkError(rsaerr)
+			checkError(rsaerr)
 
-		publicKey := key.PublicKey
+			publicKey := key.PublicKey
 
-		var n = publicKey.N
-		var e = publicKey.E
-		var d = key.D
-		var p = key.Primes[0]
-		var q = key.Primes[1]
+			var n = publicKey.N
+			var e = publicKey.E
+			var d = key.D
+			var p = key.Primes[0]
+			var q = key.Primes[1]
+
+			dataRow += fmt.Sprintf("%x;%x;%x;%x;%x;%d;\n", n, e, d, p, q, t1)
+
+		} else if algorithm == "ecc" {
+			log.Fatal("Not implemented yet.")
+		}
 
 		// Write keys
-		if _, err := f.Write([]byte(fmt.Sprintf("%d;%x;%x;%x;%x;%x;%d;\n", id, n, e, d, p, q, t1))); err != nil {
+		if _, err := f.Write([]byte(dataRow)); err != nil {
 			log.Fatal(err)
 		}
 
