@@ -58,6 +58,7 @@ func main() {
 	}
 
 	// Write header
+	// TODO make header dependent on the type of a key
 	if _, err := f.Write([]byte("id;n;e;d;p;q;t1;\n")); err != nil {
 		log.Fatal(err)
 	}
