@@ -104,7 +104,7 @@ func getRSAData(reader io.Reader, bitSize int) (data string, err error) {
 	start := time.Now()
 	key, err := rsa.GenerateKey(reader, bitSize)
 	end := time.Now()
-	t1 := end.Sub(start)
+	elapsed := end.Sub(start)
 
 	if err != nil {
 		return "", err
@@ -115,6 +115,7 @@ func getRSAData(reader io.Reader, bitSize int) (data string, err error) {
 	d := key.D
 	p := key.Primes[0]
 	q := key.Primes[1]
+	t1 := elapsed.Nanoseconds()
 
 	return fmt.Sprintf("%x;%x;%x;%x;%x;%d;", n, e, d, p, q, t1), nil
 }
