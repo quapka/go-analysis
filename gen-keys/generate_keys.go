@@ -79,6 +79,7 @@ func main() {
 				log.Fatal(err)
 			}
 		} else if eccCmd.Happened() {
+			// TODO implement getECCData function similar to getRSAData
 			log.Fatal("Generating ECC keys is not implemented yet.")
 		} else {
 			log.Fatal("Please, specify a 'rsa' or 'ecc' key type.")
