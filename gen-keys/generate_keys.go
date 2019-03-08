@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 )
 
 func main() {
+	var err error
 
 	algorithm := os.Args[1]
 	arg2 := os.Args[2]
@@ -44,33 +46,27 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// TODO rand.Redaer is global and maybe we don't need to pass it along
+	// but just call it, when it is needed
 	reader := rand.Reader
-	dataRow := ""
 
 	for id := 0; id < keyCount; id++ {
-		dataRow = fmt.Sprintf("%d;", id)
+		var dataRow string = ""
+		var data string = ""
+
+		idPrefix := fmt.Sprintf("%d;", id)
 
 		if algorithm == "rsa" {
-			start := time.Now()
-			key, rsaerr := rsa.GenerateKey(reader, bitSize)
-			end := time.Now()
-			t1 := end.Sub(start)
-
-			checkError(rsaerr)
-
-			publicKey := key.PublicKey
-
-			var n = publicKey.N
-			var e = publicKey.E
-			var d = key.D
-			var p = key.Primes[0]
-			var q = key.Primes[1]
-
-			dataRow += fmt.Sprintf("%x;%x;%x;%x;%x;%d;\n", n, e, d, p, q, t1)
-
+			data, err = getRSAData(reader, bitSize)
+			if err != nil {
+				// fmt.Printf("Got errorneous data: %s\n", data)
+				log.Fatal(err)
+			}
 		} else if algorithm == "ecc" {
-			log.Fatal("Not implemented yet.")
+			log.Fatal("Generating ECC keys is not implemented yet.")
 		}
+
+		dataRow = idPrefix + data + "\n"
 
 		// Write keys
 		if _, err := f.Write([]byte(dataRow)); err != nil {
@@ -82,12 +78,24 @@ func main() {
 	if err := f.Close(); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
-func checkError(err error) {
+func getRSAData(reader io.Reader, bitSize int) (data string, err error) {
+	start := time.Now()
+	key, err := rsa.GenerateKey(reader, bitSize)
+	end := time.Now()
+	t1 := end.Sub(start)
+
 	if err != nil {
-		fmt.Println("Fatal error ", err.Error())
-		os.Exit(1)
+		fmt.Println("We got a problem")
+		return "", err
 	}
+
+	n := key.PublicKey.N
+	e := key.PublicKey.E
+	d := key.D
+	p := key.Primes[0]
+	q := key.Primes[1]
+
+	return fmt.Sprintf("%x;%x;%x;%x;%x;%d;", n, e, d, p, q, t1), nil
 }
