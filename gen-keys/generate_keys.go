@@ -54,7 +54,7 @@ func main() {
 		log.Fatal("Please, specify a 'rsa' or 'ecc' key type.")
 	}
 
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	outFile, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,8 +65,9 @@ func main() {
 
 	if rsaCmd.Happened() {
 		// add RSA header to the output csv
+
 		header := "id;n;e;d;p;q;t1;\n"
-		if _, err := f.Write([]byte(header)); err != nil {
+		if _, err := outFile.Write([]byte(header)); err != nil {
 			log.Fatal(err)
 		}
 		// generate <keyCount> RSA keys and save them to the output csv
@@ -76,7 +77,7 @@ func main() {
 				log.Fatal(err)
 			}
 			dataRow := fmt.Sprintf("%d;%s\n", id, data)
-			if _, err := f.Write([]byte(dataRow)); err != nil {
+			if _, err := outFile.Write([]byte(dataRow)); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -84,7 +85,7 @@ func main() {
 	} else if eccCmd.Happened() {
 		// add ECC header to the output csv
 		header := "id;e;d;t1;\n"
-		if _, err := f.Write([]byte(header)); err != nil {
+		if _, err := outFile.Write([]byte(header)); err != nil {
 			log.Fatal(err)
 		}
 		// generate <keyCount> RSA keys and save them to the output csv
@@ -94,7 +95,7 @@ func main() {
 				log.Fatal(err)
 			}
 			dataRow := fmt.Sprintf("%d;%s\n", id, data)
-			if _, err := f.Write([]byte(dataRow)); err != nil {
+			if _, err := outFile.Write([]byte(dataRow)); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -102,7 +103,7 @@ func main() {
 		log.Fatal("Please, specify a 'rsa' or 'ecc' key type.")
 	}
 
-	if err := f.Close(); err != nil {
+	if err := outFile.Close(); err != nil {
 		log.Fatal(err)
 	}
 }
