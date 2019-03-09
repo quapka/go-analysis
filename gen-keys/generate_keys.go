@@ -68,10 +68,7 @@ func main() {
 		writeRow(outFile, "id;n;e;d;p;q;t1;")
 		// generate <keyCount> RSA keys and save them to the output csv
 		for id := 0; id < *keyCount; id++ {
-			data, err := getRSAData(reader, *bitSize)
-			if err != nil {
-				log.Fatal(err)
-			}
+			data := getRSAData(reader, *bitSize)
 			writeRow(outFile, fmt.Sprintf("%d;%s", id, data))
 		}
 
@@ -80,10 +77,7 @@ func main() {
 		writeRow(outFile, "id;e;d;t1;")
 		// generate <keyCount> ECC keys and save them to the output csv
 		for id := 0; id < *keyCount; id++ {
-			data, err := getECCData(reader)
-			if err != nil {
-				log.Fatal(err)
-			}
+			data := getECCData(reader)
 			writeRow(outFile, fmt.Sprintf("%d;%s", id, data))
 		}
 	} else {
@@ -95,14 +89,14 @@ func main() {
 	}
 }
 
-func getRSAData(reader io.Reader, bitSize int) (data string, err error) {
+func getRSAData(reader io.Reader, bitSize int) (data string) {
 	start := time.Now()
 	key, err := rsa.GenerateKey(reader, bitSize)
 	end := time.Now()
 	elapsed := end.Sub(start)
 
 	if err != nil {
-		return "", err
+		log.Fatal(err)
 	}
 
 	n := key.PublicKey.N
@@ -112,10 +106,10 @@ func getRSAData(reader io.Reader, bitSize int) (data string, err error) {
 	q := key.Primes[1]
 	t1 := elapsed.Nanoseconds()
 
-	return fmt.Sprintf("%x;%x;%x;%x;%x;%d;", n, e, d, p, q, t1), nil
+	return fmt.Sprintf("%x;%x;%x;%x;%x;%d;", n, e, d, p, q, t1)
 }
 
-func getECCData(reader io.Reader) (data string, err error) {
+func getECCData(reader io.Reader) (data string) {
 	curve := elliptic.P256()
 	start := time.Now()
 	key, err := ecdsa.GenerateKey(curve, reader)
@@ -123,8 +117,7 @@ func getECCData(reader io.Reader) (data string, err error) {
 	elapsed := end.Sub(start)
 
 	if err != nil {
-		fmt.Println("We got a problem")
-		return "", err
+		log.Fatal(err)
 	}
 
 	//we will store both coordinates of the point corresponding to the public key
@@ -133,7 +126,7 @@ func getECCData(reader io.Reader) (data string, err error) {
 	d := key.D
 	t1 := elapsed.Nanoseconds()
 
-	return fmt.Sprintf("%x;%x;%x;%d;", x, y, d, t1), nil
+	return fmt.Sprintf("%x;%x;%x;%d;", x, y, d, t1)
 }
 
 func writeRow(file *os.File, row string) {
