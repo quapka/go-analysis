@@ -59,45 +59,47 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Write header
-	// TODO make header dependent on the type of a key
-	if _, err := f.Write([]byte("id;n;e;d;p;q;t1;\n")); err != nil {
-		log.Fatal(err)
-	}
-
 	// TODO rand.Reader is global and maybe we don't need to pass it along
 	// but just call it, when it is needed
 	reader := rand.Reader
 
-	for id := 0; id < *keyCount; id++ {
-		var dataRow string = ""
-		var data string = ""
-
-		idPrefix := fmt.Sprintf("%d;", id)
-
-		if rsaCmd.Happened() {
-			data, err = getRSAData(reader, *bitSize)
-			if err != nil {
-				// fmt.Printf("Got erroneous data: %s\n", data)
-				log.Fatal(err)
-			}
-		} else if eccCmd.Happened() {
-			data, err = getECCData(reader)
-			if err != nil {
-				// fmt.Printf("Got erroneous data: %s\n", data)
-				log.Fatal(err)
-			}
-		} else {
-			log.Fatal("Please, specify a 'rsa' or 'ecc' key type.")
-		}
-
-		dataRow = idPrefix + data + "\n"
-
-		// Write keys
-		if _, err := f.Write([]byte(dataRow)); err != nil {
+	if rsaCmd.Happened() {
+		// add RSA header to the output csv
+		header := "id;n;e;d;p;q;t1;\n"
+		if _, err := f.Write([]byte(header)); err != nil {
 			log.Fatal(err)
 		}
+		// generate <keyCount> RSA keys and save them to the output csv
+		for id := 0; id < *keyCount; id++ {
+			data, err := getRSAData(reader, *bitSize)
+			if err != nil {
+				log.Fatal(err)
+			}
+			dataRow := fmt.Sprintf("%d;%s\n", id, data)
+			if _, err := f.Write([]byte(dataRow)); err != nil {
+				log.Fatal(err)
+			}
+		}
 
+	} else if eccCmd.Happened() {
+		// add ECC header to the output csv
+		header := "id;e;d;t1;\n"
+		if _, err := f.Write([]byte(header)); err != nil {
+			log.Fatal(err)
+		}
+		// generate <keyCount> RSA keys and save them to the output csv
+		for id := 0; id < *keyCount; id++ {
+			data, err := getECCData(reader)
+			if err != nil {
+				log.Fatal(err)
+			}
+			dataRow := fmt.Sprintf("%d;%s\n", id, data)
+			if _, err := f.Write([]byte(dataRow)); err != nil {
+				log.Fatal(err)
+			}
+		}
+	} else {
+		log.Fatal("Please, specify a 'rsa' or 'ecc' key type.")
 	}
 
 	if err := f.Close(); err != nil {
