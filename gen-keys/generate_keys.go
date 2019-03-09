@@ -65,39 +65,26 @@ func main() {
 
 	if rsaCmd.Happened() {
 		// add RSA header to the output csv
-
-		header := "id;n;e;d;p;q;t1;\n"
-		if _, err := outFile.Write([]byte(header)); err != nil {
-			log.Fatal(err)
-		}
+		writeRow(outFile, "id;n;e;d;p;q;t1;")
 		// generate <keyCount> RSA keys and save them to the output csv
 		for id := 0; id < *keyCount; id++ {
 			data, err := getRSAData(reader, *bitSize)
 			if err != nil {
 				log.Fatal(err)
 			}
-			dataRow := fmt.Sprintf("%d;%s\n", id, data)
-			if _, err := outFile.Write([]byte(dataRow)); err != nil {
-				log.Fatal(err)
-			}
+			writeRow(outFile, fmt.Sprintf("%d;%s", id, data))
 		}
 
 	} else if eccCmd.Happened() {
 		// add ECC header to the output csv
-		header := "id;e;d;t1;\n"
-		if _, err := outFile.Write([]byte(header)); err != nil {
-			log.Fatal(err)
-		}
-		// generate <keyCount> RSA keys and save them to the output csv
+		writeRow(outFile, "id;e;d;t1;\n")
+		// generate <keyCount> ECC keys and save them to the output csv
 		for id := 0; id < *keyCount; id++ {
 			data, err := getECCData(reader)
 			if err != nil {
 				log.Fatal(err)
 			}
-			dataRow := fmt.Sprintf("%d;%s\n", id, data)
-			if _, err := outFile.Write([]byte(dataRow)); err != nil {
-				log.Fatal(err)
-			}
+			writeRow(outFile, fmt.Sprintf("%d;%s", id, data))
 		}
 	} else {
 		log.Fatal("Please, specify a 'rsa' or 'ecc' key type.")
@@ -147,4 +134,10 @@ func getECCData(reader io.Reader) (data string, err error) {
 	t1 := elapsed.Nanoseconds()
 
 	return fmt.Sprintf("%x;%x;%x;%d;", x, y, d, t1), nil
+}
+
+func writeRow(file *os.File, row string) {
+	if _, err := file.Write([]byte(row + "\n")); err != nil {
+		log.Fatal(err)
+	}
 }
