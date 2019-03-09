@@ -73,10 +73,9 @@ func main() {
 		}
 
 	} else if eccCmd.Happened() {
-		// add ECC header to the output csv
-		// FIXME the header is inconsistent with respect to the data, where
+		// in contrast to the project assignment
 		// both coordinates (x, y) of the curve are saved
-		writeRow(outFile, "id;e;d;t1;")
+		writeRow(outFile, "id;x;y;d;t1;")
 		// generate <keyCount> ECC keys and save them to the output csv
 		for id := 0; id < *keyCount; id++ {
 			data := getECCData(reader)
