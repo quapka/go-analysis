@@ -77,7 +77,7 @@ func main() {
 
 	} else if eccCmd.Happened() {
 		// add ECC header to the output csv
-		writeRow(outFile, "id;e;d;t1;\n")
+		writeRow(outFile, "id;e;d;t1;")
 		// generate <keyCount> ECC keys and save them to the output csv
 		for id := 0; id < *keyCount; id++ {
 			data, err := getECCData(reader)
