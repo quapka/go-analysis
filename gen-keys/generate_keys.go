@@ -48,7 +48,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// TODO rand.Redaer is global and maybe we don't need to pass it along
+	// TODO rand.Reader is global and maybe we don't need to pass it along
 	// but just call it, when it is needed
 	reader := rand.Reader
 
