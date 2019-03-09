@@ -5,6 +5,8 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
@@ -76,12 +78,15 @@ func main() {
 		if rsaCmd.Happened() {
 			data, err = getRSAData(reader, *bitSize)
 			if err != nil {
-				// fmt.Printf("Got errorneous data: %s\n", data)
+				// fmt.Printf("Got erroneous data: %s\n", data)
 				log.Fatal(err)
 			}
 		} else if eccCmd.Happened() {
-			// TODO implement getECCData function similar to getRSAData
-			log.Fatal("Generating ECC keys is not implemented yet.")
+			data, err = getECCData(reader)
+			if err != nil {
+				// fmt.Printf("Got erroneous data: %s\n", data)
+				log.Fatal(err)
+			}
 		} else {
 			log.Fatal("Please, specify a 'rsa' or 'ecc' key type.")
 		}
@@ -118,4 +123,25 @@ func getRSAData(reader io.Reader, bitSize int) (data string, err error) {
 	t1 := elapsed.Nanoseconds()
 
 	return fmt.Sprintf("%x;%x;%x;%x;%x;%d;", n, e, d, p, q, t1), nil
+}
+
+func getECCData(reader io.Reader) (data string, err error) {
+	curve := elliptic.P256()
+	start := time.Now()
+	key, err := ecdsa.GenerateKey(curve, reader)
+	end := time.Now()
+	elapsed := end.Sub(start)
+
+	if err != nil {
+		fmt.Println("We got a problem")
+		return "", err
+	}
+
+	//we will store both coordinates of the point corresponding to the public key
+	x := key.PublicKey.X
+	y := key.PublicKey.Y
+	d := key.D
+	t1 := elapsed.Nanoseconds()
+
+	return fmt.Sprintf("%x;%x;%x;%d;", x, y, d, t1), nil
 }
