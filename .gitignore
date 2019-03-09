@@ -1,6 +1,7 @@
 virtual/
 
 *.csv
+!sample-data/*.csv
 
 *.pyo
 *.pyc
