@@ -75,7 +75,7 @@ func main() {
 	} else if eccCmd.Happened() {
 		// in contrast to the project assignment
 		// both coordinates (x, y) of the curve are saved
-		writeRow(outFile, "id;x;y;d;t1;")
+		writeRow(outFile, "id;e;d;t1;")
 		// generate <keyCount> ECC keys and save them to the output csv
 		for id := 0; id < *keyCount; id++ {
 			data := getECCData(reader)
@@ -127,7 +127,7 @@ func getECCData(reader io.Reader) (data string) {
 	d := key.D
 	t1 := elapsed.Nanoseconds()
 
-	return fmt.Sprintf("%x;%x;%x;%d;", x, y, d, t1)
+	return fmt.Sprintf("04%x%x;%x;%d;", x, y, d, t1)
 }
 
 func writeRow(file *os.File, row string) {
