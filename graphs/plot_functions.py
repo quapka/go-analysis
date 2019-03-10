@@ -4,7 +4,7 @@ import numpy as np
 
 
 def plot_histogram_of_keygen_times(data):
-    data['t1'].plot.hist()
+    data['t1'].plot.hist(bins=100)
 
 
 # plotting of large amount of data takes a lot of time and memory

@@ -7,30 +7,46 @@ import plot_functions as pf
 
 def rsa_generate_and_save_graphs(data, file_name_prefix, limit):
     data_size = len(data.index)
+    figure_size = (16, 12)
 
-    pf.plot_histogram_of_keygen_times(sampleData)
+    plt.figure(figsize=figure_size)
+    pf.plot_histogram_of_keygen_times(data)
     plt.savefig(file_name_prefix + "_hist_keygen_times.png")
     plt.clf()
 
     if data_size <= limit:
-        pf.plot_keygen_time_for_generated_keys(sampleData)
+        plt.figure(figsize=figure_size)
+        pf.plot_keygen_time_for_generated_keys(data)
         plt.savefig(file_name_prefix + "_keygen_times.png")
         plt.clf()
 
-    pf.plot_msb_histogram(sampleData, 'p')
+    plt.figure(figsize=figure_size)
+    pf.plot_msb_histogram(data, 'p')
     plt.savefig(file_name_prefix + "_hist_msb_p.png")
     plt.clf()
 
-    pf.plot_lsb_histogram(sampleData, 'p')
+    plt.figure(figsize=figure_size)
+    pf.plot_lsb_histogram(data, 'p')
     plt.savefig(file_name_prefix + "_hist_lsb_p.png")
     plt.clf()
 
-    pf.plot_msb_heatmap(sampleData, 'p')
+    plt.figure(figsize=figure_size)
+    pf.plot_msb_heatmap(data, 'p')
     plt.savefig(file_name_prefix + "_heatmap_msb_p.png")
     plt.clf()
 
-    pf.plot_lsb_heatmap(sampleData, 'p')
+    plt.figure(figsize=figure_size)
+    pf.plot_lsb_heatmap(data, 'p')
     plt.savefig(file_name_prefix + "_heatmap_lsb_p.png")
+    plt.clf()
+
+
+def ecc_generate_and_save_graphs(data, file_name_prefix, limit):
+    figure_size = (16, 12)
+
+    plt.figure(figsize=figure_size)
+    pf.plot_msb_heatmap(data, 'x')
+    plt.savefig(file_name_prefix + "_heatmap_msb_x.png")
     plt.clf()
 
 
@@ -56,4 +72,7 @@ sampleData = pd.read_csv(
 # generate graphs
 file_basename = os.path.splitext(os.path.basename(args.file[0].name))[0]
 prefix = file_basename if args.n == '' else args.n
-rsa_generate_and_save_graphs(sampleData, prefix, args.l)
+if args.m == 'rsa':
+    rsa_generate_and_save_graphs(sampleData, prefix, args.l)
+elif args.m == 'ecc':
+    ecc_generate_and_save_graphs(sampleData, prefix, args.l)
