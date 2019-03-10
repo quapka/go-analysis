@@ -57,7 +57,7 @@ def plot_lsb_heatmap(data, column_name):
     plot_byte_heatmap(data, column_name, -1)
 
 
-def generate_and_save_graphs(data, file_name_prefix, limit):
+def rsa_generate_and_save_graphs(data, file_name_prefix, limit):
     data_size = len(data.index)
 
     plot_histogram_of_keygen_times(sampleData)
@@ -89,6 +89,8 @@ def generate_and_save_graphs(data, file_name_prefix, limit):
 # parse arguments
 parser = argparse.ArgumentParser(description="Graphs generator.")
 parser.add_argument('file', type=argparse.FileType('r'), nargs=1)
+parser.add_argument('-m', choices=['rsa', 'ecc'], required=True,
+                    help='Modes of generating.')
 parser.add_argument('-n', default='', metavar='name_prefix',
                     help='Prefix of the filenames of the generated graphs. Default is the data filename.')
 parser.add_argument('-l', metavar='limit', type=int, default=10000,
@@ -106,4 +108,4 @@ sampleData = pd.read_csv(
 # generate graphs
 file_basename = os.path.splitext(os.path.basename(args.file[0].name))[0]
 prefix = file_basename if args.n == '' else args.n
-generate_and_save_graphs(sampleData, prefix, args.l)
+rsa_generate_and_save_graphs(sampleData, prefix, args.l)
