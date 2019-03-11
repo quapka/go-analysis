@@ -8,3 +8,4 @@ virtual/
 __pycache__/
 
 ._tags
+*.png
