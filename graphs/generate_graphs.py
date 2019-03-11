@@ -45,7 +45,7 @@ def ecc_generate_and_save_graphs(data, file_name_prefix, limit):
     figure_size = (16, 12)
 
     plt.figure(figsize=figure_size)
-    pf.plot_msb_heatmap(data, 'x')
+    pf.plot_msb_heatmap(data, 'e')
     plt.savefig(file_name_prefix + "_heatmap_msb_x.png")
     plt.clf()
 
