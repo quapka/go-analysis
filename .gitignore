@@ -6,3 +6,5 @@ virtual/
 *.pyo
 *.pyc
 __pycache__/
+
+._tags
