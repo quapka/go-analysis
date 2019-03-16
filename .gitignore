@@ -1,7 +1,24 @@
+# Ignore all
+*
+
+# Unignore all dirs
+!*/
+
+# Unignore .txt, .c, .h
+!*.txt
+!*.TXT
+!*.c
+!*.h
+!*.cpp
+!*.hpp
+!*.go
+
+
+!sample-data/*.csv
+
 virtual/
 
 *.csv
-!sample-data/*.csv
 
 *.pyo
 *.pyc
@@ -9,3 +26,6 @@ __pycache__/
 
 ._tags
 *.png
+
+!*.tex
+![mM]ake[fF]ile
