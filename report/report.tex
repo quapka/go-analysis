@@ -1,0 +1,122 @@
+\documentclass[a4paper]{scrartcl}
+
+\usepackage{enumitem}
+\usepackage[colorlinks]{hyperref}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage{listings}
+\usepackage{listings-golang}
+\lstset{ % add your own preferences
+    frame=single,
+    basicstyle=\footnotesize,
+    keywordstyle=\color{red},
+    numbers=left,
+    numbersep=5pt,
+    showstringspaces=false,
+    stringstyle=\color{blue},
+    tabsize=4,
+    language=Golang % this is it !
+}
+% Template for homework assignment @ FI muni
+
+% Homework setup
+\newcommand{\authorName}{Mgr.~Vladimír Sedláček, Bc.~Jan~Kvapil, Bc.~Ondřej Krčma}
+\newcommand{\courseID}{\texttt{PV204}}
+\newcommand{\homeworkID}{\texttt{Report about RSA/ECDSA keys generation}}
+
+\usepackage{amsthm}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+% Create a nice header
+\fancyhead[L]{\courseID:\homeworkID\\\authorName}
+% \fancyhead[C]{\authorName}
+\fancyhead[R]{\today}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\subtitle{}
+
+\begin{document}
+
+% \maketitle
+\section{Selecting a project}
+In our case selecting the project was not straightforward. Firstly, we've went through the library \textbf{WolfSSL}, that seemed quite nice. We've built the library from source together with a command line tool for it. We've succefully generated few keys and decided to use WolfSSL library. Unfortunately, we've lost the race in this case.
+\\\\
+The second pick was Amazon's \textbf{s2n}. This project was quite promising due to nicely and freshly looking Github page with detailed project level decisions about the design (using custom macros for checking exit codes from functions, having small function call stack, etc.). This suggested, that a lot of thought was given into this project. The contribution guide made it very clear, that they welcome contribution, that simplifies the code (of course, without sacrifycing the correctness). The only fact, that was a bummer is the following one: \textbf{s2n} does not implement custom function for generating RSA and ECDSA keys, but rather calls libraries such as OpenSSL and LibreSSL. This fact would render the first part of the project (timing key generation and other) somewhat misleading, because the analysis would be focused on those libraries and not \textbf{s2n}.
+\\\\
+We've also investigated the possibility of generating keys directly on the AWS platform, but this turned out to be dificult as well. One option is to rent the Hardrware Security Modules (HSM) from Amazon, but this is costly (around 1.5\$ per hour). Based on discussion with Petr Švenda we estimated, that the time needed to generate all the keys would go into weeks, therefore infeasible for our case and resources.
+\\\\
+Finally we've selected new programming language from Google called \textbf{Golang}. We liked the selection, because \textbf{Go} is more and more used, however, none of use worked with this language prior to this project, so that made it a challenge.
+\\\\
+At this point we've spent quite a lot of time with the selection and not the actual work. So let's get to it.
+
+\section{Useful links}
+Link to the source code on Github: \url{https://github.com/quapka/go-analysis/}.
+Link to Google Drive folder with graphs and generated data: \url{https://drive.google.com/drive/folders/1ZD-jayQTgSNx826mV9ZPJpnCoCpHPntH?usp=sharing}.
+
+\section{Generating keys}
+Programming in Go turned out to be challenging, but also nice. The language is quite strict (e.g. compilation fails in cases of unused variable/functions/imports etc.). Adds a \verb+error+ type and generally tries to enforce strict programming policies in regards to error handling and such. This suggest it might be a good pick for security in the upcoming years.
+\\\\
+We've used two Go modules: \verb+crypto/rsa+ and \verb+crypto/ecdsa+. Both implement function for key generation \verb+rsa.GenerateKey(reader, bitSize)+ and\\ \verb+ecdsa.GenerateKey(curve, reader)+
+
+The code for timing the key generation and getting the values is then rather simple (providing the code for generating RSA as an example):
+\begin{lstlisting}[caption=Function for generating RSA key values and measurements, captionpos=b]
+func getRSAData(reader io.Reader, bitSize int) (data string) {
+	start := time.Now()
+	key, err := rsa.GenerateKey(reader, bitSize)
+	end := time.Now()
+	elapsed := end.Sub(start)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	n := key.PublicKey.N
+	e := key.PublicKey.E
+	d := key.D
+	p := key.Primes[0]
+	q := key.Primes[1]
+	t1 := elapsed.Nanoseconds()
+
+	return fmt.Sprintf("%x;%x;%x;%x;%x;%d;", n, e, d, p, q, t1)
+}
+\end{lstlisting}
+
+All the keys were generated on the same machine. Generating the RSA 2048 keys took the longest, which was around hour and a half. See Appendix A. for more specification about the machine (all the keys were generated at the same time on specific thread).
+
+\section{Generating graphs}
+To generate the graphs we wrote a Python3 script using Pandas module. We
+focused on histograms and generation time heatmaps of most and least
+significant bytes of the private keys.
+\\\\
+Most of the graphs show expected distributions. However, histogram of least
+significant byte of $y$ in ECDSA keys shows increased occurrence of bytes \verb+0x00+ to
+\verb+0x0f+. Histogram of MSB of $y$ in ECDSA, on the other hand, shows decreased
+occurrence of bytes \verb+0x00+ to \verb+0x0f+.
+\\\\
+Some graphs didn’t render properly. In most cases this was just a visual
+impairment, however histogram of MSB of $x$ in ECDSA shows first 16 bytes and every
+byte which is multiple of 16 missing. Quick script checking which MSB values
+are actually in the data showed just the first 16 bytes missing. We’re not sure
+yet if the graph is rendered correctly or not.
+\\\\
+Overall, generating graphs in python takes a lot of time and experience with
+the modules, so it might have been better to generate the graphs quickly in
+R (needless to say, we have not got much experience with that either).
+
+\section{Summary}
+Some of the graphs were definitely interesting and it seems worth to do further investigation. Unfortunately, we had troubles to find big enough time windows to get together and do more detailed analysis of the results.
+
+
+\section{Appendix A.}
+All the keys were generated on the following machine:
+\begin{lstlisting}[caption=Hardware specifications of the machine generating the keys, captionpos=b]
+Model name:          Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz
+CPU MHz:             1561.080
+CPU max MHz:         3400,0000
+CPU min MHz:         400,0000
+\end{lstlisting}
+
+\end{document}
