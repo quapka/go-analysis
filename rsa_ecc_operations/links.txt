@@ -1,0 +1,2 @@
+decryption, signing: https://golang.org/src/crypto/rsa/example_test.go
+decryption, serizalization: https://gist.github.com/miguelmota/3ea9286bd1d3c2a985b67cac4ba2130a
