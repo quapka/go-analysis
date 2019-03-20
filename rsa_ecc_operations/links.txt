@@ -1,2 +1,14 @@
-decryption, signing: https://golang.org/src/crypto/rsa/example_test.go
-decryption, serizalization: https://gist.github.com/miguelmota/3ea9286bd1d3c2a985b67cac4ba2130a
+RSA - decryption, signing: https://golang.org/src/crypto/rsa/example_test.go
+RSA - decryption, serizalization: https://gist.github.com/miguelmota/3ea9286bd1d3c2a985b67cac4ba2130a
+ECDSA example (signing): https://www.socketloop.com/tutorials/golang-example-for-ecdsa-elliptic-curve-digital-signature-algorithm-functions
+ECDH examples (key establishment, serialization): https://github.com/wsddn/go-ecdh/blob/master/ecdh_test.go, https://github.com/aead/ecdh/blob/master/ecdh_test.go
+
+General ECC functions and structures: https://golang.org/pkg/crypto/elliptic/
+ECDSA functions and structures: https://golang.org/pkg/crypto/ecdsa/
+RSA functions and structures: https://golang.org/pkg/crypto/rsa/
+
+
+
+At the moment, we are only considering the curve NISTP-256 (and not curves such as X25519).
+
+Go has no ECC encryption/decryption (see https://www.reddit.com/r/golang/comments/2hoceo/can_someone_show_an_example_implementation_of/).
