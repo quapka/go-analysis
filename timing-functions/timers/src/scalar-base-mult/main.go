@@ -1,8 +1,9 @@
-package scalar_base_mult
+package main
 
 import (
 	"../util"
 	"crypto/elliptic"
+	"encoding/csv"
 	"fmt"
 	"github.com/akamensky/argparse"
 	"log"
@@ -37,22 +38,26 @@ func main() {
 
 	p256 := elliptic.P256()
 
-	// write column headers
+	// new csv writer, separator = ;
+	w := csv.NewWriter(outFile)
+	w.Comma = ';'
+
+	// get row of column headers
+	var headers []string
 	for _, row := range data {
 		inputLabel := row[0]
-		// write input label (column header)
-		if _, err := outFile.WriteString(inputLabel + ";"); err != nil {
-			log.Fatal(err)
-		}
+		headers = append(headers, inputLabel)
 	}
-
-	// write endline
-	if _, err := outFile.WriteString("\n"); err != nil {
+	// write row of column headers
+	if err := w.Write(headers); err != nil {
 		log.Fatal(err)
 	}
+	w.Flush()
 
 	// iterate over rows
 	for i := 0; i < *numIterationArg; i++ {
+		// get row of values
+		var values []string
 		// iterate over columns
 		for _, row := range data {
 			// input for the measured function
@@ -68,17 +73,15 @@ func main() {
 			elapsed := end.Sub(start)
 			t1 := elapsed.Nanoseconds()
 
-			// write t1
-			if _, err := outFile.WriteString(fmt.Sprintf("%d;", t1)); err != nil {
-				log.Fatal(err)
-			}
+			values = append(values, fmt.Sprintf("%d", t1))
 
 		}
 
-		// write endline
-		if _, err := outFile.WriteString("\n"); err != nil {
+		// write row of values
+		if err := w.Write(values); err != nil {
 			log.Fatal(err)
 		}
+		w.Flush()
 	}
 
 	// close outfile
