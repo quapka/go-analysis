@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/csv"
 	"errors"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"strings"
@@ -42,4 +43,24 @@ func StringToIntBytes(input string, base int) ([]byte, error) {
 	}
 
 	return value.Bytes(), nil
+}
+
+// Constant reader always returns the same byte.
+type constantReader struct {
+	value byte
+}
+
+func NewConstantReader(value byte) io.Reader {
+	reader := new(constantReader)
+	reader.value = value
+	return reader
+}
+
+func (r constantReader) Read(p []byte) (n int, err error) {
+
+	for i := range p {
+		p[i] = r.value
+	}
+
+	return len(p), nil
 }

@@ -2,7 +2,7 @@ package main
 
 import (
 	"../util"
-	"crypto/elliptic"
+	"crypto/rsa"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -10,12 +10,17 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"strconv"
 	"time"
 )
 
+type combinedMult interface {
+	CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x, y *big.Int)
+}
+
 func main() {
 	// setup parser
-	parser := argparse.NewParser(os.Args[0], "Generate time measurements for Add function on p256.")
+	parser := argparse.NewParser(os.Args[0], "Generate time measurements for EncryptPKCS1v156.")
 	numIterationArg := parser.Int("n", "num-iteration", &argparse.Options{Required: true, Help: "Specify the number of iteration for each input"})
 	inputFileName := parser.String("f", "filename", &argparse.Options{Required: true, Help: "The path to the file that contains the inputs."})
 
@@ -37,8 +42,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	p256 := elliptic.P256()
 
 	// new csv writer, separator = ;
 	w := csv.NewWriter(outFile)
@@ -63,38 +66,42 @@ func main() {
 		// iterate over columns
 		for _, row := range data {
 			// input for the measured function
-			x1 := new(big.Int)
-			x1, ok := x1.SetString(row[1], 16)
-			if !ok {
-				log.Fatal(errors.New("Cannot convert \"" + row[1] + "\" into a number."))
+			readerValues, err := util.StringToIntBytes(row[1], 16)
+			if err != nil {
+				log.Fatal(err)
 			}
+			reader := util.NewConstantReader(readerValues[0])
 
-			y1 := new(big.Int)
-			y1, ok = y1.SetString(row[2], 16)
+			n := new(big.Int)
+			n, ok := n.SetString(row[2], 16)
 			if !ok {
 				log.Fatal(errors.New("Cannot convert \"" + row[2] + "\" into a number."))
 			}
-
-			x2 := new(big.Int)
-			x2, ok = x2.SetString(row[3], 16)
-			if !ok {
-				log.Fatal(errors.New("Cannot convert \"" + row[3] + "\" into a number."))
+			e, err := strconv.ParseInt(row[3], 16, 64)
+			if err != nil {
+				log.Fatal(err)
 			}
+			publicKey := new(rsa.PublicKey)
+			publicKey.E = int(e)
+			publicKey.N = n
 
-			y2 := new(big.Int)
-			y2, ok = y2.SetString(row[4], 16)
-			if !ok {
-				log.Fatal(errors.New("Cannot convert \"" + row[4] + "\" into a number."))
+			message, err := util.StringToIntBytes(row[4], 16)
+			if err != nil {
+				log.Fatal(err)
 			}
 
 			// timing
 			start := time.Now()
 
-			_, _ = p256.Params().Add(x1, y1, x2, y2) // measured function
+			_, err = rsa.EncryptPKCS1v15(reader, publicKey, message) // measured function
 
 			end := time.Now()
 			elapsed := end.Sub(start)
 			t1 := elapsed.Nanoseconds()
+
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			values = append(values, fmt.Sprintf("%d", t1))
 

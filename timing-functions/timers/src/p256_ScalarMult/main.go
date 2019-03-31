@@ -19,7 +19,7 @@ type combinedMult interface {
 
 func main() {
 	// setup parser
-	parser := argparse.NewParser(os.Args[0], "Generate time measurements for ScalarBaseMult function on p256.")
+	parser := argparse.NewParser(os.Args[0], "Generate time measurements for ScalarMult function on p256.")
 	numIterationArg := parser.Int("n", "num-iteration", &argparse.Options{Required: true, Help: "Specify the number of iteration for each input"})
 	inputFileName := parser.String("f", "filename", &argparse.Options{Required: true, Help: "The path to the file that contains the inputs."})
 
