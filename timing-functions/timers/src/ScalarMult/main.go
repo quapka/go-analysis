@@ -4,9 +4,11 @@ import (
 	"../util"
 	"crypto/elliptic"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"github.com/akamensky/argparse"
 	"log"
+	"math/big"
 	"os"
 	"time"
 )
@@ -61,14 +63,28 @@ func main() {
 		// iterate over columns
 		for _, row := range data {
 			// input for the measured function
-			scalar, err := util.StringToIntBytes(row[1], 16)
+			bx := new(big.Int)
+			bx, ok := bx.SetString(row[1], 16)
+			if !ok {
+				log.Fatal(errors.New("Cannot convert \"" + row[1] + "\" into a number."))
+			}
+
+			by := new(big.Int)
+			by, ok = by.SetString(row[2], 16)
+			if !ok {
+				log.Fatal(errors.New("Cannot convert \"" + row[2] + "\" into a number."))
+			}
+
+			scalar, err := util.StringToIntBytes(row[3], 16)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			// timing
 			start := time.Now()
-			_, _ = p256.ScalarBaseMult(scalar) // measured function
+
+			_, _ = p256.Params().ScalarMult(bx, by, scalar) // measured function
+
 			end := time.Now()
 			elapsed := end.Sub(start)
 			t1 := elapsed.Nanoseconds()
