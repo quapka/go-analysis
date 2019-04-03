@@ -13,13 +13,9 @@ import (
 	"time"
 )
 
-type combinedMult interface {
-	CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x, y *big.Int)
-}
-
 func main() {
 	// setup parser
-	parser := argparse.NewParser(os.Args[0], "Generate time measurements for ScalarMult function on p256.")
+	parser := argparse.NewParser(os.Args[0], "Generate time measurements for CombineMult function on p256.")
 	numIterationArg := parser.Int("n", "num-iteration", &argparse.Options{Required: true, Help: "Specify the number of iteration for each input"})
 	inputFileName := parser.String("f", "filename", &argparse.Options{Required: true, Help: "The path to the file that contains the inputs."})
 
@@ -79,25 +75,15 @@ func main() {
 				log.Fatal(errors.New("Cannot convert \"" + row[2] + "\" into a number."))
 			}
 
-			scalar1, err := util.StringToIntBytes(row[3], 16)
+			scalar, err := util.StringToIntBytes(row[3], 16)
 			if err != nil {
 				log.Fatal(err)
-			}
-
-			scalar2, err := util.StringToIntBytes(row[4], 16)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			co, ok := p256.(combinedMult)
-			if !ok {
-				log.Fatal(errors.New("the curve does not implement combineMult"))
 			}
 
 			// timing
 			start := time.Now()
 
-			_, _ = co.CombinedMult(bx, bx, scalar1, scalar2) // measured function
+			_, _ = p256.ScalarMult(bx, by, scalar) // measured function
 
 			end := time.Now()
 			elapsed := end.Sub(start)

@@ -13,13 +13,9 @@ import (
 	"time"
 )
 
-type combinedMult interface {
-	CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x, y *big.Int)
-}
-
 func main() {
 	// setup parser
-	parser := argparse.NewParser(os.Args[0], "Generate time measurements for ScalarMult function on p256.")
+	parser := argparse.NewParser(os.Args[0], "Generate time measurements for Add function on p256.")
 	numIterationArg := parser.Int("n", "num-iteration", &argparse.Options{Required: true, Help: "Specify the number of iteration for each input"})
 	inputFileName := parser.String("f", "filename", &argparse.Options{Required: true, Help: "The path to the file that contains the inputs."})
 
@@ -67,37 +63,34 @@ func main() {
 		// iterate over columns
 		for _, row := range data {
 			// input for the measured function
-			bx := new(big.Int)
-			bx, ok := bx.SetString(row[1], 16)
+			x1 := new(big.Int)
+			x1, ok := x1.SetString(row[1], 16)
 			if !ok {
 				log.Fatal(errors.New("Cannot convert \"" + row[1] + "\" into a number."))
 			}
 
-			by := new(big.Int)
-			by, ok = by.SetString(row[2], 16)
+			y1 := new(big.Int)
+			y1, ok = y1.SetString(row[2], 16)
 			if !ok {
 				log.Fatal(errors.New("Cannot convert \"" + row[2] + "\" into a number."))
 			}
 
-			scalar1, err := util.StringToIntBytes(row[3], 16)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			scalar2, err := util.StringToIntBytes(row[4], 16)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			co, ok := p256.(combinedMult)
+			x2 := new(big.Int)
+			x2, ok = x2.SetString(row[3], 16)
 			if !ok {
-				log.Fatal(errors.New("the curve does not implement combineMult"))
+				log.Fatal(errors.New("Cannot convert \"" + row[3] + "\" into a number."))
+			}
+
+			y2 := new(big.Int)
+			y2, ok = y2.SetString(row[4], 16)
+			if !ok {
+				log.Fatal(errors.New("Cannot convert \"" + row[4] + "\" into a number."))
 			}
 
 			// timing
 			start := time.Now()
 
-			_, _ = co.CombinedMult(bx, bx, scalar1, scalar2) // measured function
+			_, _ = p256.Add(x1, y1, x2, y2) // measured function
 
 			end := time.Now()
 			elapsed := end.Sub(start)
