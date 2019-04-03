@@ -70,6 +70,11 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			if len(readerValues) == 0 {
+				readerValues = append(readerValues, 0)
+			}
+
 			reader := util.NewConstantReader(readerValues[0])
 
 			n := new(big.Int)
@@ -101,8 +106,8 @@ func main() {
 			privateKey.E = int(e)
 			privateKey.N = n
 			privateKey.D = d
-			privateKey.Primes[0] = p
-			privateKey.Primes[1] = q
+			privateKey.Primes = append(privateKey.Primes, p)
+			privateKey.Primes = append(privateKey.Primes, q)
 
 			ciphertext, err := util.StringToIntBytes(row[7], 16)
 			if err != nil {
