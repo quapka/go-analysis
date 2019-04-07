@@ -63,7 +63,7 @@ All of them seemed either relevant or easy to measure (at least at the first gla
 Commentary: This function computes a scalar multiple of the generator point of the parent curve. In fact, it just calls ScalarMult with the generator point of the curve as input (but it still make sense to measure both of them and observe whether there are any significant differences).
 \\Inputs: 1) 1000 random scalars, 2) scalars with weights from 0 to 255 (10 scalars for each weight, 2550), see graph \ref{fig:generic_ScalarBaseMult}.
 % \\Graphs:
-\\Conclusion: The graphs show a clear trend of time dependency of on the Hamming weight of the scalar. And indeed, digging into the code revealed that this function basically performs only the classical Double-and-Add algorithm (combined with conversions to and from Jacobian coordinates), where both Add and Double are discussed below . This seems quite surprising (considering that Go also implements modern ECC such as Curve25519 with the Montgomery ladder) and should definitely be investigated further.
+\\Conclusion: The graphs show a clear trend of time dependency of on the Hamming weight of the scalar. And indeed, digging into the code revealed that this function basically performs only the classical Double-and-Add algorithm (combined with conversions to and from Jacobian coordinates), where both Add and Double are discussed below. This seems quite surprising (considering that Go also implements modern ECC such as Curve25519 with the Montgomery ladder), but can probably be explained by the fact that this is only a general scalar multiplication function and might only be used for testing purposes.
 
 \begin{figure}
     \centering
@@ -72,22 +72,22 @@ Commentary: This function computes a scalar multiple of the generator point of t
   \label{fig:generic_ScalarBaseMult}
 \end{figure}
 
-\section{P256 ScalarBaseMult}
-Commentary: Go language has multiple implementation of ScalarBaseMult -- the generic seen previously, but also custom made for a given curve. The time does not seem to be such as in the previous case. The visible \textit{peaks} in the graph \ref{fig:p256_ScalarBaseMult} might be due to another process interrupting the computation -- to get more insight we'd need to repeat the computations or perform them on another machine.
-\\Inputs: 1) 1000 random scalars, 2) scalars with weights from 0 to 255 (10 scalars for each weight, 2550), see graph \ref{fig:p256_ScalarBaseMult}.
-\\Conclusion: it's not clear, that this function would leak any secret data at this point.
-
-\begin{figure}
-    \centering
-  \includegraphics[width=0.4\linewidth]{../timers/src/data/data_p256_ScalarBaseMult_random_timing-means.png}
-  \caption{P256 ScalarBaseMult: increasing weight of the scalar does not suggest the increase of the time needed for the multiplication.}
-  \label{fig:p256_ScalarBaseMult}
-\end{figure}
-
 \section{ScalarMult}
 Commentary: This is the same as ScalarBaseMult, only the multiplied point can be arbitrary (with the exception of the neutral element).
 \\Inputs: 1) Points with x coordinate of weights from 0 to 255 (10 points for each weight) and random scalars, 2) random points and scalars with weights from 0 to 255 (10 scalars for each weight). The graph is is quite similar to \ref{fig:generic_ScalarBaseMult}.%, see graph \ref{fig:generic_ScalarMult}).
 \\Conclusion: Using other points than the generator one does not seem to significantly affect the graphs, thus the conclusion is the same as for ScalarBaseMult.
+
+\section{P256 ScalarBaseMult}
+Commentary: Go language has multiple implementations of ScalarBaseMult -- the generic one seen above, but also ones specially tailored for a given curve like this one, which uses the sliding window method (highly optimized and with some extra protection). And indeed, the trend seen in the previous case is not present here. The visible \textit{peaks} in the graph \ref{fig:p256_ScalarBaseMult} might be due to another process interrupting the computation -- to get more insight we'd need to repeat the computations or perform them on another machine.
+\\Inputs: 1) 1000 random scalars, 2) scalars with weights from 0 to 255 (10 scalars for each weight, 2550), see graph \ref{fig:p256_ScalarBaseMult}.
+\\Conclusion: It does not seem probable that this function would leak any secret data based on our measurements.
+
+\begin{figure}
+    \centering
+  \includegraphics[width=0.4\linewidth]{../timers/src/data/data_p256_ScalarBaseMult_random_timing-means.png}
+  \caption{P256 ScalarBaseMult: increasing the weight of the scalar does not suggest the increase of the time needed for the multiplication.}
+  \label{fig:p256_ScalarBaseMult}
+\end{figure}
 
 % \begin{figure}
 %     \centering
@@ -126,15 +126,15 @@ Commentary: This function checks whether the given point is on the parent curve.
 \fi
 
 %Is it worth mentioning this?
-\section{EncryptPKCS1v15}
+\section{DecryptPKCS1v15}
 Inputs: Plaintexts with weights from 0 to 1900 (10 plaintexts for each weight), random keys and constant byte generator (generating constantly some byte from 10 to 99).
-\\Conclusion: Even though the first few values (see graph \ref{fig:EncryptPKCS1v15}) aren't that uniform we hardly can infer potential leak.
+\\Conclusion: Even though there are  few values (see graph \ref{fig:DecryptPKCS1v15}) that are not that uniform we ca hardly infer a potential leak.
 
 \begin{figure}
     \centering
-  \includegraphics[width=0.4\linewidth]{data_Encrypt_plaintext_weight_timing-means.png}
-  \caption{EncryptPKCS1v15}
-  \label{fig:EncryptPKCS1v15}
+  \includegraphics[width=0.4\linewidth]{data_Decrypt_plaintext_weight_timing-means.png}
+  \caption{DecryptPKCS1v15}
+  \label{fig:DecryptPKCS1v15}
 \end{figure}
 
 \iffalse
@@ -167,7 +167,7 @@ t1 := elapsed.Nanoseconds()
 
 \section{Generating graphs}
 %Add some similar details?
-The graphs were generated using R language. Since we repeated the measurements multiple times (up to 1000 measurements for the same inputs) we then removed potential outliers using the \verb+boxplot+ function. We've reduced the multiple measurements by calculating the mean and median values to get the trend of the measurements rather than individual values.
+The graphs were generated using R language. Since we repeated the measurements multiple times (up to 1000 measurements for the same inputs), we then removed potential outliers using the \verb+boxplot+ function. We have reduced the multiple measurements by calculating the mean and median values to get the trend of the measurements rather than individual values.
 
 % \iffalse
 % To generate the graphs we wrote a Python3 script using Pandas module. We
@@ -191,15 +191,14 @@ The graphs were generated using R language. Since we repeated the measurements m
 % \fi
 
 \section{Summary}
-The most interesting result we discovered is definitely the use of the Double-and-Add algorithm in the ScalarBaseMult function. As this function is crucial for almost all ECC schemes, this vulnerability could prove crucial unless some other countermeasures are implemented, as an attacker could quite easily learn the Hamming weight of the secret scalar (and possibly recover it completely). If we do not find any protection against such an attack, we will try to contact the developers.
+The most interesting result we discovered is definitely the use of the Double-and-Add algorithm in the ScalarBaseMult function, which leaks the Hamming weight of the (potentially secret) scalar. However, this could prove to be an issue only if this function was used in real applications, which does not seem to be the case, as each curve has its own optimized and protected version of scalar multiplication. We did not find any conclusive evidence of weaknesses for the other functions.
+
+% As this function is crucial for almost all ECC schemes, this vulnerability could prove crucial unless some other countermeasures are implemented, as an attacker could quite easily learn the Hamming weight of the secret scalar (and possibly recover it completely). If we do not find any protection against such an attack, we will try to contact the developers.
 
 %Some of the graphs were definitely interesting and it seems worth to do further investigation. Unfortunately, we had troubles to find big enough time windows to get together and do more detailed analysis of the results.
 
 
 \section{Appendix A. Hardware specifications}
-
-%%Not true anymore, right?
-
 The functions \verb+Add+, \verb+Double+, \verb+ScalarBaseMult+, \verb+ScalarMult+ were measured on the following machine:
 \begin{lstlisting}[caption=Hardware specifications of the machine A, captionpos=b]
 Model name:          Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz
