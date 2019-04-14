@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./hsm"
 	"fmt"
 	"github.com/miekg/pkcs11"
 	"log"
@@ -27,14 +28,20 @@ func main() {
 	}
 	defer p.CloseSession(session)
 
+	fmt.Println(slots)
+	fmt.Println(session)
+
 	err = p.Login(session, pkcs11.CKU_USER, "1234")
 	if err != nil {
 		panic(err)
 	}
 	defer p.Logout(session)
 
+	obj, _, _ := p.FindObjects(session, 10)
+	fmt.Println(obj)
+
 	tokenPersistent := true
-	tokenLabel := true
+	tokenLabel := "label"
 	publicKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
@@ -51,14 +58,17 @@ func main() {
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
 	}
-	pbk, pvk, e := p.GenerateKeyPair(session,
+	pbk, pvk, e := p.GenerateKeyPair(
+		session,
 		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil)},
-		publicKeyTemplate, privateKeyTemplate)
+		publicKeyTemplate,
+		privateKeyTemplate)
 	if e != nil {
 		log.Fatal("failed to generate keypair: %s\n", e)
 	}
 	fmt.Println(fmt.Sprintf("%x", pbk))
 	fmt.Println(fmt.Sprintf("%x", pvk))
+	fmt.Println(fmt.Sprintf("%x", publicKeyTemplate[4].Value))
 	// p.GenerateKeyPair(
 	//     session,
 	//     []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil)},
@@ -75,4 +85,33 @@ func main() {
 	// 	fmt.Printf("%x", d)
 	// }
 	// fmt.Println()
+
+	publicKeyTemplate = []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, tokenLabel),
+	}
+
+	p.FindObjectsInit(session, publicKeyTemplate)
+	obj, _, _ = p.FindObjects(session, 100)
+	fmt.Println(obj)
+
+	p.Destroy()
+	p.Finalize()
+	p.CloseSession(session)
+	p.Logout(session)
+
+	fmt.Println("----------------------------------")
+
+	hsmInstance := hsm.New("/usr/lib/softhsm/libsofthsm2.so", "fdrgf", "1234")
+
+	var pub hsm.PublicKey
+	pub.Hsm = hsmInstance
+	pub.KeyLabel = tokenLabel
+
+	err = pub.Initialize()
+	fmt.Println(err)
+	defer pub.Finalize()
+
+	h, err := pub.FindKeyHandle()
+	fmt.Println(err)
+	fmt.Println(h)
 }
