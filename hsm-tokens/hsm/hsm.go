@@ -1,6 +1,7 @@
 package hsm
 
 import (
+	"errors"
 	"github.com/miekg/pkcs11"
 )
 
@@ -56,6 +57,11 @@ func (hsm *Hsm) Initialize() error {
 }
 
 func (hsm *Hsm) Finalize() error {
+
+	if hsm.Ctx == nil {
+		return errors.New("hsm has already been finalized")
+	}
+
 	defer hsm.Ctx.Destroy()
 	defer hsm.Ctx.Finalize()
 	defer hsm.Ctx.CloseSession(hsm.SessionHandle)
