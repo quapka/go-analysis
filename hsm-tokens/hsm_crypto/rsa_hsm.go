@@ -17,7 +17,7 @@ type PublicKey struct {
 
 type PrivateKey struct {
 	*Hsm
-	*PublicKey
+	PublicKey
 	KeyLabel []byte
 	handle   pkcs11.ObjectHandle
 }
@@ -55,7 +55,6 @@ func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err err
 	}
 
 	labelSize := 64
-	tokenPersistent := true
 	// tokenLabel := []byte(hsmInstance.hsmInfo.tokenLabel)
 	publicKeyLabel := make([]byte, labelSize)
 	_, err = rand.Read(publicKeyLabel)
@@ -72,7 +71,7 @@ func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err err
 	publicKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		// TODO do not fix public exponent
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 0, 0, 1}),
@@ -82,7 +81,7 @@ func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err err
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, publicKeyLabel),
 	}
 	privateKeyTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
 		// pkcs11.NewAttribute(pkcs11.CKA_LABEL, tokenLabel),
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
@@ -98,7 +97,7 @@ func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err err
 		return privKey, err
 	}
 
-	privKey.PublicKey = &PublicKey{hsmInstance, publicKeyLabel, publicObjHandle}
+	privKey.PublicKey = PublicKey{hsmInstance, publicKeyLabel, publicObjHandle}
 	privKey = PrivateKey{
 		hsmInstance,
 		privKey.PublicKey,
@@ -146,4 +145,45 @@ func (pubKey *PublicKey) Verify(digest []byte, signature []byte) (bool, error) {
 
 	err = ctx.Verify(sessionHandle, digest, signature)
 	return err == nil, err
+}
+
+func (privKey *PrivateKey) Public() PublicKey {
+	return privKey.PublicKey
+}
+
+func (pubKey *PublicKey) Encrypt(msg []byte) ([]byte, error) {
+
+	if !pubKey.isInitialized() {
+		return nil, errors.New("hsm has not been initialized")
+	}
+
+	ctx := pubKey.Ctx
+	sessionHandle := pubKey.SessionHandle
+
+	// FIXME correct mechanism?
+	err := ctx.EncryptInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, pubKey.handle)
+	if err != nil {
+		return nil, err
+	}
+
+	return ctx.Encrypt(sessionHandle, msg)
+}
+
+// does not use rand nor opts
+func (privKey *PrivateKey) Decrypt(rand io.Reader, msg []byte, opts crypto.DecrypterOpts) (plaintext []byte, err error) {
+
+	if !privKey.isInitialized() {
+		return nil, errors.New("hsm has not been initialized")
+	}
+
+	ctx := privKey.Hsm.Ctx
+	sessionHandle := privKey.Hsm.SessionHandle
+
+	// FIXME correct mechanism?
+	err = ctx.DecryptInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, privKey.handle)
+	if err != nil {
+		return nil, err
+	}
+
+	return ctx.Decrypt(sessionHandle, msg)
 }

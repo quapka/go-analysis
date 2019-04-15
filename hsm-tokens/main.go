@@ -103,7 +103,8 @@ func main() {
 
 	fmt.Println("----------------------------------")
 
-	hsmInstance := hsm_crypto.New("/usr/lib/softhsm/libsofthsm2.so", "pv204", "1234")
+	pin := "1234"
+	hsmInstance := hsm_crypto.New("/usr/lib/softhsm/libsofthsm2.so", "pv204", &pin)
 	err := hsmInstance.Initialize()
 	defer hsmInstance.Finalize()
 	if err != nil {
@@ -124,17 +125,27 @@ func main() {
 
 	bitSize := uint(1024)
 	privKey, _ := hsm_crypto.GenerateRsaKey(bitSize, hsmInstance)
-
 	message := []byte("Hello World")
-	signature, err := privKey.Sign(nil, message, nil) //, nil)
-	if err != nil {
-		log.Fatal("Failed to create a signature", err)
-	}
-	fmt.Println(fmt.Sprintf("%s", signature))
 
-	// TODO try to verify with standard library function (not hsm)
+	// test sign
+	signature, err := privKey.Sign(nil, message, nil) //, nil)
+	fmt.Println(fmt.Sprintf("%s", signature))
+	fmt.Println(err)
+
+	// test verify
 	ver, err := privKey.Verify(message, signature)
 	fmt.Println(ver)
 	fmt.Println(err)
 
+	// test encrypt
+	cryptotext, err := privKey.Encrypt(message)
+	fmt.Println(fmt.Sprintf("%s", cryptotext))
+	fmt.Println(err)
+
+	// test decrypt
+	plaintext, err := privKey.Decrypt(nil, cryptotext, nil)
+	fmt.Println(fmt.Sprintf("%s", plaintext))
+	fmt.Println(err)
+
+	// TODO try to encrypt and verify using standard crypto library (not hsm)
 }

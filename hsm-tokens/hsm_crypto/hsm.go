@@ -16,10 +16,10 @@ type hsmInfo struct {
 	library    string
 	tokenLabel string // FIXME some other identifier of a token?
 	// serialNumber string
-	pin string
+	pin *string
 }
 
-func New(library string, tokenLabel string, pin string) *Hsm {
+func New(library string, tokenLabel string, pin *string) *Hsm {
 	newHsm := new(Hsm)
 
 	newHsm.hsmInfo.library = library
@@ -56,7 +56,7 @@ func (hsm *Hsm) Initialize() error {
 	fmt.Printf("Session state: %x.\n", sessionInfo.State)
 	fmt.Printf("Session state: %d.\n", sessionInfo.State)
 
-	err = ctx.Login(sessionHandle, pkcs11.CKU_USER, hsm.hsmInfo.pin) // FIXME usertype??
+	err = ctx.Login(sessionHandle, pkcs11.CKU_USER, *hsm.hsmInfo.pin) // FIXME usertype??
 	if err != nil {
 		return err
 	}
