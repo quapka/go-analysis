@@ -66,6 +66,7 @@ func main() {
 	if e != nil {
 		log.Fatal("failed to generate keypair: %s\n", e)
 	}
+	fmt.Printf("Session: %d.\n", session)
 	fmt.Println(fmt.Sprintf("%x", pbk))
 	fmt.Println(fmt.Sprintf("%x", pvk))
 	fmt.Println(fmt.Sprintf("%x", publicKeyTemplate[4].Value))
@@ -96,22 +97,41 @@ func main() {
 
 	p.Destroy()
 	p.Finalize()
+
 	p.CloseSession(session)
+
 	p.Logout(session)
 
 	fmt.Println("----------------------------------")
 
-	hsmInstance := hsm.New("/usr/lib/softhsm/libsofthsm2.so", "fdrgf", "1234")
+	hsmInstance := hsm.New("/usr/lib/softhsm/libsofthsm2.so", "pv204", "1234")
+	hsmInstance.Initialize()
+	_ = hsmInstance
 
-	var pub hsm.PublicKey
-	pub.Hsm = hsmInstance
-	pub.KeyLabel = tokenLabel
+	// var pub hsm.PublicKey
+	// pub.Hsm = hsmInstance
+	// pub.KeyLabel = tokenLabel
 
-	err = pub.Initialize()
-	fmt.Println(err)
-	defer pub.Finalize()
+	// err = pub.Initialize()
+	// fmt.Println(err)
+	// defer pub.Finalize()
 
-	h, err := pub.FindKeyHandle()
-	fmt.Println(err)
-	fmt.Println(h)
+	// h, err := pub.FindKeyHandle()
+	// fmt.Println(err)
+	// fmt.Println(h)
+
+	bitSize := uint(1024)
+	key, _ := hsm.GenerateKeyHSM(bitSize, hsmInstance)
+	// _ = key
+	privKey := key.PrivateKeyHSM
+	_ = privKey
+
+	message := []byte("Hello World")
+	signature, err := privKey.Sign(nil, message) //, nil)
+	if err != nil {
+		log.Fatal("Failed to create a signature", err)
+	}
+	fmt.Println(fmt.Sprintf("%s", signature))
+
+	// _ = key
 }
