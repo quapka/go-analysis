@@ -2,6 +2,7 @@ package hsm
 
 import (
 	"errors"
+	"fmt"
 	"github.com/miekg/pkcs11"
 )
 
@@ -14,7 +15,8 @@ type Hsm struct {
 type hsmInfo struct {
 	library    string
 	tokenLabel string // FIXME some other identifier of a token?
-	pin        string // FIXME make pin *string for better security?
+	// serialNumber string
+	pin string // FIXME make pin *string for better security?
 }
 
 func New(library string, tokenLabel string, pin string) *Hsm {
@@ -35,6 +37,7 @@ func (hsm *Hsm) Initialize() error {
 		return err
 	}
 
+	hsm.Ctx = ctx
 	slot, err := hsm.findSlot()
 	if err != nil {
 		return err
@@ -44,13 +47,20 @@ func (hsm *Hsm) Initialize() error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Session: %d.\n", sessionHandle)
+
+	sessionInfo, err := ctx.GetSessionInfo(sessionHandle) // FIXME flags??
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Session state: %x.\n", sessionInfo.State)
+	fmt.Printf("Session state: %d.\n", sessionInfo.State)
 
 	err = ctx.Login(sessionHandle, pkcs11.CKU_USER, hsm.hsmInfo.pin) // FIXME usertype??
 	if err != nil {
 		return err
 	}
 
-	hsm.Ctx = ctx
 	hsm.SessionHandle = sessionHandle
 
 	return nil
@@ -73,6 +83,30 @@ func (hsm *Hsm) Finalize() error {
 	return nil
 }
 
-func (hsm *Hsm) findSlot() (uint, error) {
-	return 0, nil // TODO actually use tokenLabel to find the slot id
+func (hsm *Hsm) findSlot() (slotID uint, err error) {
+	slots, err := hsm.Ctx.GetSlotList(true)
+	if err != nil {
+		return 0, err
+	}
+	// var pkcs11.SlotInfo slotInfo
+	// var pkcs11.TokenInfo tokenInfo
+
+	for _, slot := range slots {
+		if slot == 0 {
+			continue
+		}
+		fmt.Printf("slot: %d", slot)
+		fmt.Println()
+		// slotInfo, err := GetSlotInfo(slot)
+		tokenInfo, err := hsm.Ctx.GetTokenInfo(slot)
+		if err != nil {
+			return 0, err
+		}
+		if tokenInfo.Label == hsm.hsmInfo.tokenLabel {
+			slotID = slot
+			break
+		}
+	}
+	// return 0, nil // TODO actually use tokenLabel to find the slot id
+	return slotID, nil
 }
