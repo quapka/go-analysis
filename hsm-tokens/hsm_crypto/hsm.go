@@ -16,7 +16,7 @@ type hsmInfo struct {
 	library    string
 	tokenLabel string // FIXME some other identifier of a token?
 	// serialNumber string
-	pin string // FIXME make pin *string for better security?
+	pin string
 }
 
 func New(library string, tokenLabel string, pin string) *Hsm {
@@ -83,7 +83,15 @@ func (hsm *Hsm) Finalize() error {
 	return nil
 }
 
+func (hsm *Hsm) isInitialized() bool {
+	return hsm.Ctx != nil
+}
+
 func (hsm *Hsm) findSlot() (slotID uint, err error) {
+	if !hsm.isInitialized() {
+		return 0, errors.New("hsm has not been initialized")
+	}
+
 	slots, err := hsm.Ctx.GetSlotList(true)
 	if err != nil {
 		return 0, err
@@ -107,6 +115,6 @@ func (hsm *Hsm) findSlot() (slotID uint, err error) {
 			break
 		}
 	}
-	// return 0, nil // TODO actually use tokenLabel to find the slot id
+
 	return slotID, nil
 }

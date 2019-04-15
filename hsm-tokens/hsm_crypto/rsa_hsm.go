@@ -1,45 +1,35 @@
 package hsm_crypto
 
 import (
+	"crypto"
 	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/miekg/pkcs11"
 	"io"
-	"log"
 )
 
-type keyHSM struct {
-	*PublicKey
-	*PrivateKeyHSM
-}
-
-// FIXME rename PublicKeyHSM
 type PublicKey struct {
 	*Hsm            // contains PIN, so it's not really public
 	KeyLabel []byte // FIXME some other identifier of a key?
 	handle   pkcs11.ObjectHandle
 }
 
-type PrivateKeyHSM struct {
+type PrivateKey struct {
 	*Hsm
 	*PublicKey
 	KeyLabel []byte
 	handle   pkcs11.ObjectHandle
 }
 
-type Bla struct {
-}
-
 func (key *PublicKey) FindKeyHandle() (pkcs11.ObjectHandle, error) {
 
-	if key.Ctx == nil {
+	if !key.isInitialized() {
 		return 0, errors.New("hsm has not been initialized")
 	}
 
 	err := key.Ctx.FindObjectsInit(
-		// FIXME key is missing the SessionHandle
-		key.SessionHandle,
+		key.SessionHandle, // key has SessionHandle from Hsm
 		[]*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, key.KeyLabel)})
 
 	if err != nil {
@@ -57,19 +47,25 @@ func (key *PublicKey) FindKeyHandle() (pkcs11.ObjectHandle, error) {
 	return objs[0], err
 }
 
-func GenerateKeyHSM(bitSize uint, hsmInstance *Hsm) (key keyHSM, err error) {
+// FIXME unused bitsize
+func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err error) {
+
+	if !hsmInstance.isInitialized() {
+		return privKey, errors.New("hsm has not been initialized")
+	}
+
 	labelSize := 64
 	tokenPersistent := true
 	// tokenLabel := []byte(hsmInstance.hsmInfo.tokenLabel)
 	publicKeyLabel := make([]byte, labelSize)
 	_, err = rand.Read(publicKeyLabel)
 	if err != nil {
-		return key, err
+		return privKey, err
 	}
 	privateKeyLabel := make([]byte, labelSize)
 	_, err = rand.Read(privateKeyLabel)
 	if err != nil {
-		return key, err
+		return privKey, err
 	}
 
 	// TODO reason about the attributes we use - which we need and why
@@ -99,44 +95,55 @@ func GenerateKeyHSM(bitSize uint, hsmInstance *Hsm) (key keyHSM, err error) {
 		publicKeyTemplate,
 		privateKeyTemplate)
 	if err != nil {
-		return key, err
+		return privKey, err
 	}
 
-	// FIXME rename PublicKeyHSM
-	key.PublicKey = &PublicKey{hsmInstance, publicKeyLabel, publicObjHandle}
-	key.PrivateKeyHSM = &PrivateKeyHSM{
+	privKey.PublicKey = &PublicKey{hsmInstance, publicKeyLabel, publicObjHandle}
+	privKey = PrivateKey{
 		hsmInstance,
-		key.PublicKey,
+		privKey.PublicKey,
 		privateKeyLabel,
 		privateObjHandle,
 	}
-	return key, nil
+	return privKey, nil
 }
 
-// FIXME add missing argument opts SignerOpts
-func (privKey *PrivateKeyHSM) Sign(rand io.Reader, digest []byte) (signature []byte, err error) {
-	_ = rand
-	// _ = opts
+// does not use rand nor opts
+func (privKey *PrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
+
+	if !privKey.isInitialized() {
+		return nil, errors.New("hsm has not been initialized")
+	}
+
 	ctx := privKey.Hsm.Ctx
 	sessionHandle := privKey.Hsm.SessionHandle
-	// get session info to check, that session is alive
-	sessionInfo, err := ctx.GetSessionInfo(sessionHandle) // FIXME flags??
+
+	// FIXME initialize the signing arena - maybe not optimal to od on each sign
+	// FIXME correct mechanism?
+	err = ctx.SignInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, privKey.handle)
 	if err != nil {
-		return signature, err
+		return nil, err
 	}
-	// FIXME this works even if the session is CLOSED!
-	// either fix or get rid of
-	if sessionInfo.State != pkcs11.CKF_RW_SESSION {
-		fmt.Println(sessionInfo.State)
-		fmt.Println("Invalid state?")
+
+	// FIXME what about 'update loop' and then finalize for longer messages
+	return ctx.Sign(sessionHandle, digest)
+}
+
+func (pubKey *PublicKey) Verify(digest []byte, signature []byte) (bool, error) {
+
+	if !pubKey.isInitialized() {
+		return false, errors.New("hsm has not been initialized")
 	}
-	// initialize the signing arena - maybe not optimal to od on each sign
-	ctx.SignInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKA_SIGN, nil)}, privKey.handle)
-	// TODO what about 'update loop' and then finalize for longer messages
-	// ctx.SignInit(sessionHandle)
-	signature, err = ctx.Sign(sessionHandle, digest)
+
+	ctx := pubKey.Hsm.Ctx
+	sessionHandle := pubKey.Hsm.SessionHandle
+
+	// FIXME correct mechanism?
+	err := ctx.VerifyInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, pubKey.handle)
 	if err != nil {
-		log.Fatal(err)
+		return false, err
 	}
-	return signature, nil
+
+	err = ctx.Verify(sessionHandle, digest, signature)
+	return err == nil, err
 }
