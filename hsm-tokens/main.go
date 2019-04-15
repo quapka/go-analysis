@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./hsm"
+	"./hsm_crypto"
 	"fmt"
 	"github.com/miekg/pkcs11"
 	"log"
@@ -104,7 +104,7 @@ func main() {
 
 	fmt.Println("----------------------------------")
 
-	hsmInstance := hsm.New("/usr/lib/softhsm/libsofthsm2.so", "pv204", "1234")
+	hsmInstance := hsm_crypto.New("/usr/lib/softhsm/libsofthsm2.so", "pv204", "1234")
 	hsmInstance.Initialize()
 	_ = hsmInstance
 
@@ -121,7 +121,7 @@ func main() {
 	// fmt.Println(h)
 
 	bitSize := uint(1024)
-	key, _ := hsm.GenerateKeyHSM(bitSize, hsmInstance)
+	key, _ := hsm_crypto.GenerateKeyHSM(bitSize, hsmInstance)
 	// _ = key
 	privKey := key.PrivateKeyHSM
 	_ = privKey

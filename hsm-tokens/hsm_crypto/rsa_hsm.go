@@ -1,4 +1,4 @@
-package hsm
+package hsm_crypto
 
 import (
 	"crypto/rand"
