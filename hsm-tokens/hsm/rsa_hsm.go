@@ -112,3 +112,31 @@ func GenerateKeyHSM(bitSize uint, hsmInstance *Hsm) (key keyHSM, err error) {
 	}
 	return key, nil
 }
+
+// FIXME add missing argument opts SignerOpts
+func (privKey *PrivateKeyHSM) Sign(rand io.Reader, digest []byte) (signature []byte, err error) {
+	_ = rand
+	// _ = opts
+	ctx := privKey.Hsm.Ctx
+	sessionHandle := privKey.Hsm.SessionHandle
+	// get session info to check, that session is alive
+	sessionInfo, err := ctx.GetSessionInfo(sessionHandle) // FIXME flags??
+	if err != nil {
+		return signature, err
+	}
+	// FIXME this works even if the session is CLOSED!
+	// either fix or get rid of
+	if sessionInfo.State != pkcs11.CKF_RW_SESSION {
+		fmt.Println(sessionInfo.State)
+		fmt.Println("Invalid state?")
+	}
+	// initialize the signing arena - maybe not optimal to od on each sign
+	ctx.SignInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKA_SIGN, nil)}, privKey.handle)
+	// TODO what about 'update loop' and then finalize for longer messages
+	// ctx.SignInit(sessionHandle)
+	signature, err = ctx.Sign(sessionHandle, digest)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return signature, nil
+}
