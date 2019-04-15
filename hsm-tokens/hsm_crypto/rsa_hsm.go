@@ -22,6 +22,10 @@ type PrivateKey struct {
 	handle   pkcs11.ObjectHandle
 }
 
+func (privKey *PrivateKey) Public() PublicKey {
+	return privKey.PublicKey
+}
+
 func (key *PublicKey) FindKeyHandle() (pkcs11.ObjectHandle, error) {
 
 	if !key.isInitialized() {
@@ -107,8 +111,7 @@ func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err err
 	return privKey, nil
 }
 
-// does not use rand nor opts
-func (privKey *PrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
+func (privKey *PrivateKey) sign(digest []byte, m []*pkcs11.Mechanism) (signature []byte, err error) {
 
 	if !privKey.isInitialized() {
 		return nil, errors.New("hsm has not been initialized")
@@ -117,18 +120,21 @@ func (privKey *PrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.Signe
 	ctx := privKey.Hsm.Ctx
 	sessionHandle := privKey.Hsm.SessionHandle
 
-	// FIXME initialize the signing arena - maybe not optimal to od on each sign
-	// FIXME correct mechanism?
-	err = ctx.SignInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, privKey.handle)
+	err = ctx.SignInit(sessionHandle, m, privKey.handle)
 	if err != nil {
 		return nil, err
 	}
 
-	// FIXME what about 'update loop' and then finalize for longer messages
 	return ctx.Sign(sessionHandle, digest)
 }
 
-func (pubKey *PublicKey) Verify(digest []byte, signature []byte) (bool, error) {
+// does not use rand nor opts
+func (privKey *PrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
+	// FIXME correct mechanism?
+	return privKey.sign(digest, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)})
+}
+
+func (pubKey *PublicKey) verify(digest []byte, signature []byte, m []*pkcs11.Mechanism) (bool, error) {
 
 	if !pubKey.isInitialized() {
 		return false, errors.New("hsm has not been initialized")
@@ -137,8 +143,7 @@ func (pubKey *PublicKey) Verify(digest []byte, signature []byte) (bool, error) {
 	ctx := pubKey.Hsm.Ctx
 	sessionHandle := pubKey.Hsm.SessionHandle
 
-	// FIXME correct mechanism?
-	err := ctx.VerifyInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, pubKey.handle)
+	err := ctx.VerifyInit(sessionHandle, m, pubKey.handle)
 	if err != nil {
 		return false, err
 	}
@@ -147,11 +152,12 @@ func (pubKey *PublicKey) Verify(digest []byte, signature []byte) (bool, error) {
 	return err == nil, err
 }
 
-func (privKey *PrivateKey) Public() PublicKey {
-	return privKey.PublicKey
+func (pubKey *PublicKey) Verify(digest []byte, signature []byte) (bool, error) {
+	// FIXME correct mechanism?
+	return pubKey.verify(digest, signature, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)})
 }
 
-func (pubKey *PublicKey) Encrypt(msg []byte) ([]byte, error) {
+func (pubKey *PublicKey) encrypt(plaintext []byte, m []*pkcs11.Mechanism) ([]byte, error) {
 
 	if !pubKey.isInitialized() {
 		return nil, errors.New("hsm has not been initialized")
@@ -160,17 +166,20 @@ func (pubKey *PublicKey) Encrypt(msg []byte) ([]byte, error) {
 	ctx := pubKey.Ctx
 	sessionHandle := pubKey.SessionHandle
 
-	// FIXME correct mechanism?
-	err := ctx.EncryptInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, pubKey.handle)
+	err := ctx.EncryptInit(sessionHandle, m, pubKey.handle)
 	if err != nil {
 		return nil, err
 	}
 
-	return ctx.Encrypt(sessionHandle, msg)
+	return ctx.Encrypt(sessionHandle, plaintext)
 }
 
-// does not use rand nor opts
-func (privKey *PrivateKey) Decrypt(rand io.Reader, msg []byte, opts crypto.DecrypterOpts) (plaintext []byte, err error) {
+func (pubKey *PublicKey) Encrypt(msg []byte) ([]byte, error) {
+	// FIXME correct mechanism?
+	return pubKey.encrypt(msg, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)})
+}
+
+func (privKey *PrivateKey) decrypt(ciphertext []byte, m []*pkcs11.Mechanism) (plaintext []byte, err error) {
 
 	if !privKey.isInitialized() {
 		return nil, errors.New("hsm has not been initialized")
@@ -179,11 +188,16 @@ func (privKey *PrivateKey) Decrypt(rand io.Reader, msg []byte, opts crypto.Decry
 	ctx := privKey.Hsm.Ctx
 	sessionHandle := privKey.Hsm.SessionHandle
 
-	// FIXME correct mechanism?
-	err = ctx.DecryptInit(sessionHandle, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)}, privKey.handle)
+	err = ctx.DecryptInit(sessionHandle, m, privKey.handle)
 	if err != nil {
 		return nil, err
 	}
 
-	return ctx.Decrypt(sessionHandle, msg)
+	return ctx.Decrypt(sessionHandle, ciphertext)
+}
+
+// does not use rand nor opts
+func (privKey *PrivateKey) Decrypt(rand io.Reader, msg []byte, opts crypto.DecrypterOpts) (plaintext []byte, err error) {
+	// FIXME correct mechanism?
+	return privKey.decrypt(msg, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)})
 }
