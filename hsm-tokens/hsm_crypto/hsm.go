@@ -84,7 +84,7 @@ func (hsm *Hsm) Finalize() error {
 }
 
 func (hsm *Hsm) isInitialized() bool {
-	return hsm.Ctx != nil
+	return hsm != nil && hsm.Ctx != nil
 }
 
 func (hsm *Hsm) findSlot() (slotID uint, err error) {
