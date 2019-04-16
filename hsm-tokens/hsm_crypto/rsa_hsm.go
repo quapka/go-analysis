@@ -46,7 +46,7 @@ func (pubKey *PublicKey) Export() (key rsa.PublicKey, err error) {
 		return key, err
 	}
 
-	modulusAtt, err := pubKey.Ctx.GetAttributeValue(sessionHandle, keyHandle, []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, nil)})
+	modulusAtt, err := pubKey.Ctx.GetAttributeValue(sessionHandle, keyHandle, []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_MODULUS, nil)})
 	if err != nil {
 		return key, err
 	}
@@ -102,6 +102,7 @@ func (key *PublicKey) FindKeyHandle() (pkcs11.ObjectHandle, error) {
 	}
 
 	objs, _, err := key.Ctx.FindObjects(key.SessionHandle, 1)
+	defer key.Ctx.FindObjectsFinal(key.SessionHandle)
 	if len(objs) == 0 {
 		return 0, errors.New("no keys found")
 	}
@@ -139,7 +140,7 @@ func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err err
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		// TODO do not fix public exponent
-		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 0, 0, 1}),
+		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, 2048),
 		// TODO use tokenLabel - to link a key to a token, but slightly redundant
 		// pkcs11.NewAttribute(pkcs11.CKA_LABEL, tokenLabel),

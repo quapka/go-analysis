@@ -2,6 +2,8 @@ package main
 
 import (
 	"./hsm_crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"log"
 )
@@ -152,5 +154,13 @@ func main() {
 	fmt.Println(keyExp)
 	fmt.Println(err)
 
-	// TODO try to encrypt and verify using standard crypto library (not hsm)
+	// test encrypt with rsa package
+	cryptotext, err = rsa.EncryptPKCS1v15(rand.Reader, &keyExp, message)
+	fmt.Println(fmt.Sprintf("%s", cryptotext))
+	fmt.Println(err)
+
+	// test decrypt ciphertext encrypted with rsa package
+	plaintext, err = privKey.Decrypt(nil, cryptotext, nil)
+	fmt.Println(fmt.Sprintf("%s", plaintext))
+	fmt.Println(err)
 }
