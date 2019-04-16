@@ -147,5 +147,10 @@ func main() {
 	fmt.Println(fmt.Sprintf("%s", plaintext))
 	fmt.Println(err)
 
+	// test export
+	keyExp, err := privKey.Export()
+	fmt.Println(keyExp)
+	fmt.Println(err)
+
 	// TODO try to encrypt and verify using standard crypto library (not hsm)
 }

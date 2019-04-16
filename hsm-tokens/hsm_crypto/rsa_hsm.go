@@ -3,10 +3,13 @@ package hsm_crypto
 import (
 	"crypto"
 	"crypto/rand"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"github.com/miekg/pkcs11"
 	"io"
+	"math"
+	"math/big"
 )
 
 type PublicKey struct {
@@ -16,7 +19,6 @@ type PublicKey struct {
 }
 
 type PrivateKey struct {
-	*Hsm
 	PublicKey
 	KeyLabel []byte
 	handle   pkcs11.ObjectHandle
@@ -24,6 +26,65 @@ type PrivateKey struct {
 
 func (privKey *PrivateKey) Public() PublicKey {
 	return privKey.PublicKey
+}
+
+func (pubKey *PublicKey) Export() (key rsa.PublicKey, err error) {
+
+	if !pubKey.isInitialized() {
+		return key, errors.New("hsm has not been initialized")
+	}
+
+	sessionHandle := pubKey.SessionHandle
+
+	keyHandle, err := pubKey.FindKeyHandle()
+	if err != nil {
+		return key, err
+	}
+
+	exponentAtt, err := pubKey.Ctx.GetAttributeValue(sessionHandle, keyHandle, []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, nil)})
+	if err != nil {
+		return key, err
+	}
+
+	modulusAtt, err := pubKey.Ctx.GetAttributeValue(sessionHandle, keyHandle, []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, nil)})
+	if err != nil {
+		return key, err
+	}
+
+	exponent := exponentBytesToInt(exponentAtt[0].Value)
+	modulus := modulusBytesToBigInt(modulusAtt[0].Value)
+
+	return rsa.PublicKey{modulus, exponent}, nil
+}
+
+func getBit(bytes []byte, index int) uint8 {
+	byte := bytes[index/8]
+	bit := (byte >> uint(index%8)) & 1
+	return bit
+}
+
+func modulusBytesToBigInt(bytes []byte) *big.Int {
+	bigValue := new(big.Int)
+
+	for j := 0; j < len(bytes)*8; j++ {
+		if getBit(bytes, j) == 1 {
+			bigValue.SetBit(bigValue, j, 1)
+		}
+	}
+
+	return bigValue
+}
+
+func exponentBytesToInt(bytes []byte) int {
+	value := 0
+
+	for j := 0; j < len(bytes)*8; j++ {
+		if getBit(bytes, j) == 1 {
+			value += int(math.Pow(2, float64(j)))
+		}
+	}
+
+	return value
 }
 
 func (key *PublicKey) FindKeyHandle() (pkcs11.ObjectHandle, error) {
@@ -103,7 +164,6 @@ func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err err
 
 	privKey.PublicKey = PublicKey{hsmInstance, publicKeyLabel, publicObjHandle}
 	privKey = PrivateKey{
-		hsmInstance,
 		privKey.PublicKey,
 		privateKeyLabel,
 		privateObjHandle,
