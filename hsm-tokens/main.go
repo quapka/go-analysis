@@ -1,12 +1,13 @@
 package main
 
 import (
-	ecdsa_hsm "./hsm_crypto/ecdsa"
-	rsa_hsm "./hsm_crypto/rsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"github.com/quapka/go-analysis/hsm-tokens/hsm_crypto"
+	ecdsa_hsm "github.com/quapka/go-analysis/hsm-tokens/hsm_crypto/ecdsa"
+	rsa_hsm "github.com/quapka/go-analysis/hsm-tokens/hsm_crypto/rsa"
 	"log"
 )
 
@@ -67,25 +68,33 @@ func hsmExampleRSA(hsmInstance *hsm_crypto.Hsm) {
 }
 
 func hsmExampleECDSA(hsmInstance *hsm_crypto.Hsm) {
-	// message := []byte("Hello World")
+	message := []byte("Hello World")
 	curve := elliptic.P256()
-	privKey, err := ecdsa_hsm.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
+	privKey, err := ecdsa_hsm.GenerateKey(curve, rand.Reader, hsmInstance)
 	if err != nil {
 		fmt.Println(err)
 	}
-	_ = privKey
+	signature, err := privKey.Sign(nil, message, nil) //, nil)
+	fmt.Println(fmt.Sprintf("%s", signature))
+	fmt.Println(err)
 
-	curve = elliptic.P384()
-	privKey, err = ecdsa_hsm.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
-	if err != nil {
-		fmt.Println(err)
-	}
-	_ = privKey
+	// test verify
+	ver, err := privKey.Verify(message, signature)
+	fmt.Println(ver)
+	fmt.Println(err)
+	// _ = privKey
 
-	curve = elliptic.P521()
-	privKey, err = ecdsa_hsm.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
-	if err != nil {
-		fmt.Println(err)
-	}
-	_ = privKey
+	// curve = elliptic.P384()
+	// privKey, err = ecdsa_hsm.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// _ = privKey
+
+	// curve = elliptic.P521()
+	// privKey, err = ecdsa_hsm.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// _ = privKey
 }

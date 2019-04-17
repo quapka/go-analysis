@@ -13,9 +13,50 @@ import (
 	"math/big"
 )
 
+type PublicKey struct {
+	*hsm_crypto.Hsm        // contains PIN, so it's not really public
+	KeyLabel        []byte // FIXME some other identifier of a key?
+	handle          pkcs11.ObjectHandle
+}
+
+type PrivateKey struct {
+	PublicKey
+	KeyLabel []byte
+	handle   pkcs11.ObjectHandle
+}
+
+func (privKey *PrivateKey) Public() PublicKey {
+	return privKey.PublicKey
+}
+
+func (key *PublicKey) FindKeyHandle() (pkcs11.ObjectHandle, error) {
+
+	if !key.Hsm.IsInitialized() {
+		return 0, errors.New("hsm has not been initialized")
+	}
+
+	err := key.Ctx.FindObjectsInit(
+		key.SessionHandle, // key has SessionHandle from Hsm
+		[]*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, key.KeyLabel)})
+
+	if err != nil {
+		return 0, err
+	}
+
+	objs, _, err := key.Ctx.FindObjects(key.SessionHandle, 1)
+	defer key.Ctx.FindObjectsFinal(key.SessionHandle)
+	if len(objs) == 0 {
+		return 0, errors.New("no keys found")
+	}
+	if len(objs) > 1 {
+		return objs[0], errors.New(fmt.Sprintf("%d keys found", len(objs)))
+	}
+
+	return objs[0], err
+}
 func (pubKey *PublicKey) Export() (key rsa.PublicKey, err error) {
 
-	if !pubKey.isInitialized() {
+	if !pubKey.Hsm.IsInitialized() {
 		return key, errors.New("hsm has not been initialized")
 	}
 
@@ -73,9 +114,9 @@ func exponentBytesToInt(bytes []byte) int {
 }
 
 // FIXME unused bitsize
-func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err error) {
+func GenerateRsaKey(bitSize uint, hsmInstance *hsm_crypto.Hsm) (privKey PrivateKey, err error) {
 
-	if !hsmInstance.isInitialized() {
+	if !hsmInstance.IsInitialized() {
 		return privKey, errors.New("hsm has not been initialized")
 	}
 
@@ -133,7 +174,7 @@ func GenerateRsaKey(bitSize uint, hsmInstance *Hsm) (privKey PrivateKey, err err
 
 func (privKey *PrivateKey) sign(digest []byte, m []*pkcs11.Mechanism) (signature []byte, err error) {
 
-	if !privKey.isInitialized() {
+	if !privKey.Hsm.IsInitialized() {
 		return nil, errors.New("hsm has not been initialized")
 	}
 
@@ -156,7 +197,7 @@ func (privKey *PrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.Signe
 
 func (pubKey *PublicKey) verify(digest []byte, signature []byte, m []*pkcs11.Mechanism) (bool, error) {
 
-	if !pubKey.isInitialized() {
+	if !pubKey.Hsm.IsInitialized() {
 		return false, errors.New("hsm has not been initialized")
 	}
 
@@ -179,7 +220,7 @@ func (pubKey *PublicKey) Verify(digest []byte, signature []byte) (bool, error) {
 
 func (pubKey *PublicKey) encrypt(plaintext []byte, m []*pkcs11.Mechanism) ([]byte, error) {
 
-	if !pubKey.isInitialized() {
+	if !pubKey.Hsm.IsInitialized() {
 		return nil, errors.New("hsm has not been initialized")
 	}
 
@@ -201,7 +242,7 @@ func (pubKey *PublicKey) Encrypt(msg []byte) ([]byte, error) {
 
 func (privKey *PrivateKey) decrypt(ciphertext []byte, m []*pkcs11.Mechanism) (plaintext []byte, err error) {
 
-	if !privKey.isInitialized() {
+	if !privKey.Hsm.IsInitialized() {
 		return nil, errors.New("hsm has not been initialized")
 	}
 
