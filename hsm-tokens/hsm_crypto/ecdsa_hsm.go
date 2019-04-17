@@ -25,11 +25,18 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 	if err != nil {
 		return priv, err
 	}
-	// fmt.Printf("\n%s\n", publicKeyLabel)
 
-	// p256 curve
-	ecdsa_params := []byte{0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07}
-	// _ = ecdsa_params
+	var ecdsa_params []byte
+	switch curveName := c.Params().Name; curveName {
+	case "P-256":
+		ecdsa_params = []byte{0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07}
+	case "P-384":
+		ecdsa_params = []byte{0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x22}
+	case "P-521":
+		ecdsa_params = []byte{0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x23}
+	default:
+		return priv, errors.New("unknown curve")
+	}
 
 	// TODO reason about the attributes we use - which we need and why
 	publicKeyTemplate := []*pkcs11.Attribute{
@@ -53,7 +60,7 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 		// pkcs11.NewAttribute(pkcs11.CKA_ECDSA_PARAMS, ecdsa_params),
 
 		// pkcs11.NewAttribute(pkcs11.CKA_LABEL, tokenLabel),
-		pkcs1e.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, privateKeyLabel),
 	}
