@@ -271,3 +271,39 @@ func (pubKey *PublicKey) Verify(digest []byte, signature []byte) (bool, error) {
 	// FIXME correct mechanism?
 	return pubKey.verify(digest, signature, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)})
 }
+
+// func (privKey *PrivateKey) DeriveSharedSecret(pubKey ecdsa.PublicKey, rand io.Reader) (secret []byte, err error) {
+// 	params := pkcs11.NewECDH1DeriveParams(pkcs11.CKD_SHA1_KDF, []byte{}, []byte{})
+// 	session := privKey.Hsm.SessionHandle
+// 	ctx := privKey.Hsm.Ctx
+
+// 	labelSize := 64
+// 	// tokenLabel := []byte(hsmInstance.hsmInfo.tokenLabel)
+// 	secretLabel := make([]byte, labelSize)
+// 	_, err = rand.Read(secretLabel)
+// 	if err != nil {
+// 		return secret, err
+// 	}
+
+// 	template := []*pkcs11.Attribute{
+// 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
+// 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
+// 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, false),
+// 		// pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+// 		// pkcs11.NewAttribute(pkcs11.CKA_LABEL, tokenLabel),
+// 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, false),
+// 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
+// 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, secretLabel),
+// 		pkcs11.NewAttribute(pkcs11., secretLabel),
+// 	}
+
+// 	secretHandle, err := ctx.DeriveKey(
+// 		session,
+// 		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDH1_DERIVE, nil)},
+// 		privKey.handle,
+// 		template)
+// 	if err != nil {
+// 		return []byte{}, errors.New("could not derive a new key")
+// 	}
+// 	return secret, err
+// }
