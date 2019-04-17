@@ -5,7 +5,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	// "encoding/asn1"
 	"fmt"
 	"log"
 )
@@ -74,9 +73,18 @@ func hsmExampleECDSA(hsmInstance *hsm_crypto.Hsm) {
 		fmt.Println(err)
 	}
 	_ = privKey
-	// fmt.Printf("\n%s\n", privKey.KeyLabel)
-	// _ = privKey
-	// data, _ := asn1.Marshal(curve.Params())
-	// fmt.Printf("\n%d\n", len(data))
-	// fmt.Println(fmt.Sprintf("%s", data))
+
+	curve = elliptic.P384()
+	privKey, err = hsm_crypto.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_ = privKey
+
+	curve = elliptic.P521()
+	privKey, err = hsm_crypto.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_ = privKey
 }
