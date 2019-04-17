@@ -3,10 +3,16 @@ package hsm_crypto
 import (
 	"crypto/elliptic"
 	"errors"
+	"encoding/hex"
 	"github.com/miekg/pkcs11"
 	"io"
 )
 
+// values copied from the RFC #6637 section 11.
+// https://www.ietf.org/rfc/rfc6637.txt
+const P_256_DER = "06082A8648CE3D030107"
+const P_384_DER = "06052B81040022"
+const P_521_DER = "06052B81040023"
 func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv PrivateKey, err error) {
 
 	if !hsmInstance.isInitialized() {
@@ -26,16 +32,9 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 		return priv, err
 	}
 
-	var ecdsa_params []byte
-	switch curveName := c.Params().Name; curveName {
-	case "P-256":
-		ecdsa_params = []byte{0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07}
-	case "P-384":
-		ecdsa_params = []byte{0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x22}
-	case "P-521":
-		ecdsa_params = []byte{0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x23}
-	default:
-		return priv, errors.New("unknown curve")
+	ecdsaParams, err := getCurveParamsInDER(c.Params().Name)
+	if err != nil {
+		return priv, err
 	}
 
 	// TODO reason about the attributes we use - which we need and why
@@ -44,7 +43,7 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_ECDSA),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
-		pkcs11.NewAttribute(pkcs11.CKA_ECDSA_PARAMS, ecdsa_params),
+		pkcs11.NewAttribute(pkcs11.CKA_ECDSA_PARAMS, ecdsaParams),
 		// TODO do not fix public exponent
 		// pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
 		// pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, 2048),
@@ -57,7 +56,6 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_ECDSA),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-		// pkcs11.NewAttribute(pkcs11.CKA_ECDSA_PARAMS, ecdsa_params),
 
 		// pkcs11.NewAttribute(pkcs11.CKA_LABEL, tokenLabel),
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
@@ -86,4 +84,24 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 	}
 	return priv, nil
 
+}
+
+func getCurveParamsInDER(curveName string) (params []byte, err error) {
+
+	var curveDER string
+	switch curveName {
+	case "P-256":
+		curveDER = P_256_DER
+	case "P-384":
+		curveDER = P_384_DER
+	case "P-521":
+		curveDER = P_521_DER
+	default:
+		return []byte{}, errors.New("unknown curve")
+	}
+	params, err = hex.DecodeString(curveDER)
+	if err != nil {
+		return []byte{}, err
+	}
+	return params, nil
 }
