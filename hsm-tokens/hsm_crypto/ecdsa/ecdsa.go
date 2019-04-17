@@ -205,3 +205,48 @@ func (pubKey *PublicKey) Export() (key ecdsa.PublicKey, err error) {
 	// 		return key, err
 	// 	}
 }
+
+func (privKey *PrivateKey) sign(digest []byte, m []*pkcs11.Mechanism) (signature []byte, err error) {
+	if !privKey.Hsm.IsInitialized() {
+		return nil, errors.New("hsm has not been initialized")
+	}
+
+	ctx := privKey.Hsm.Ctx
+	sessionHandle := privKey.Hsm.SessionHandle
+
+	err = ctx.SignInit(sessionHandle, m, privKey.handle)
+	if err != nil {
+		return nil, err
+	}
+
+	return ctx.Sign(sessionHandle, digest)
+}
+
+// does not use rand nor opts
+func (privKey *PrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
+	// FIXME correct mechanism?
+	return privKey.sign(digest, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)})
+}
+
+func (pubKey *PublicKey) verify(digest []byte, signature []byte, m []*pkcs11.Mechanism) (bool, error) {
+
+	if !pubKey.Hsm.IsInitialized() {
+		return false, errors.New("hsm has not been initialized")
+	}
+
+	ctx := pubKey.Hsm.Ctx
+	sessionHandle := pubKey.Hsm.SessionHandle
+
+	err := ctx.VerifyInit(sessionHandle, m, pubKey.handle)
+	if err != nil {
+		return false, err
+	}
+
+	err = ctx.Verify(sessionHandle, digest, signature)
+	return err == nil, err
+}
+
+func (pubKey *PublicKey) Verify(digest []byte, signature []byte) (bool, error) {
+	// FIXME correct mechanism?
+	return pubKey.verify(digest, signature, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)})
+}
