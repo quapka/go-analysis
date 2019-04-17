@@ -176,7 +176,7 @@ func (pubKey *PublicKey) Export() (key ecdsa.PublicKey, err error) {
 		return key, err
 	}
 
-	curveDER, err := pubKey.Ctx.GetAttributeValue(
+	ecdsaParams, err := pubKey.Ctx.GetAttributeValue(
 		sessionHandle,
 		keyHandle,
 		[]*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_ECDSA_PARAMS, nil)},
@@ -184,6 +184,20 @@ func (pubKey *PublicKey) Export() (key ecdsa.PublicKey, err error) {
 	if err != nil {
 		return key, err
 	}
+
+	// ecdsaPoint, err := pubKey.Ctx.GetAttributeValue(
+	// 	sessionHandle,
+	// 	keyHandle,
+	// 	[]*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, nil)},
+	// )
+	// if err != nil {
+	// 	return key, err
+	// }
+
+	curveDER := hex.EncodeToString(ecdsaParams[0].Value)
+	curve := curveFromDER(curveDER)
+
+	_ = ecdsa.PublicKey{curve, new(big.Int), new(big.Int)}
 	return key, err
 
 	// 	modulusAtt, err := pubKey.Ctx.GetAttributeValue(sessionHandle, keyHandle, []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_MODULUS, nil)})
