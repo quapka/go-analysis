@@ -1,7 +1,8 @@
 package main
 
 import (
-	"./hsm_crypto"
+	ecdsa_hsm "./hsm_crypto/ecdsa"
+	rsa_hsm "./hsm_crypto/rsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
@@ -26,7 +27,7 @@ func main() {
 
 func hsmExampleRSA(hsmInstance *hsm_crypto.Hsm) {
 	bitSize := uint(1024)
-	privKey, _ := hsm_crypto.GenerateRsaKey(bitSize, hsmInstance)
+	privKey, _ := rsa_hsm.GenerateRsaKey(bitSize, hsmInstance)
 	message := []byte("Hello World")
 
 	// test sign
@@ -68,21 +69,21 @@ func hsmExampleRSA(hsmInstance *hsm_crypto.Hsm) {
 func hsmExampleECDSA(hsmInstance *hsm_crypto.Hsm) {
 	// message := []byte("Hello World")
 	curve := elliptic.P256()
-	privKey, err := hsm_crypto.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
+	privKey, err := ecdsa_hsm.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
 	if err != nil {
 		fmt.Println(err)
 	}
 	_ = privKey
 
 	curve = elliptic.P384()
-	privKey, err = hsm_crypto.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
+	privKey, err = ecdsa_hsm.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
 	if err != nil {
 		fmt.Println(err)
 	}
 	_ = privKey
 
 	curve = elliptic.P521()
-	privKey, err = hsm_crypto.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
+	privKey, err = ecdsa_hsm.GenerateECDSAKey(curve, rand.Reader, hsmInstance)
 	if err != nil {
 		fmt.Println(err)
 	}

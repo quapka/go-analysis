@@ -1,4 +1,4 @@
-package hsm_crypto
+package ecdsa
 
 import (
 	"crypto/ecdsa"
@@ -7,6 +7,7 @@ import (
 	// "fmt"
 	"encoding/hex"
 	"github.com/miekg/pkcs11"
+	"github.com/quapka/go-analysis/hsm-tokens/hsm_crypto"
 	"io"
 )
 
@@ -18,7 +19,7 @@ const P_521_DER = "06052B81040023"
 
 // FIXME what is priv if it has not been initialized?
 // maybe return pointer and return nil in case of a error
-func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (privKey PrivateKey, err error) {
+func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *hsm_crypto.Hsm) (privKey PrivateKey, err error) {
 
 	if !hsmInstance.isInitialized() {
 		return privKey, errors.New("hsm has not been initialized")
@@ -107,7 +108,7 @@ func getCurveParamsInDER(curveName string) (params []byte, err error) {
 	return params, nil
 }
 
-func (pubKey *PublicKey) Export() (key ecdsa.PublicKey, err error) {
+func (pubKey *hsm_crypto.PublicKey) Export() (key ecdsa.PublicKey, err error) {
 
 	if !pubKey.isInitialized() {
 		return key, errors.New("hsm has not been initialized")
@@ -128,6 +129,7 @@ func (pubKey *PublicKey) Export() (key ecdsa.PublicKey, err error) {
 	if err != nil {
 		return key, err
 	}
+	return key, err
 
 	// 	modulusAtt, err := pubKey.Ctx.GetAttributeValue(sessionHandle, keyHandle, []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_MODULUS, nil)})
 	// 	if err != nil {

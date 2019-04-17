@@ -19,6 +19,48 @@ type hsmInfo struct {
 	pin *string
 }
 
+type PublicKey struct {
+	*hsm_crypto.Hsm        // contains PIN, so it's not really public
+	KeyLabel        []byte // FIXME some other identifier of a key?
+	handle          pkcs11.ObjectHandle
+}
+
+type PrivateKey struct {
+	PublicKey
+	KeyLabel []byte
+	handle   pkcs11.ObjectHandle
+}
+
+func (privKey *PrivateKey) Public() PublicKey {
+	return privKey.PublicKey
+}
+
+func (key *PublicKey) FindKeyHandle() (pkcs11.ObjectHandle, error) {
+
+	if !key.isInitialized() {
+		return 0, errors.New("hsm has not been initialized")
+	}
+
+	err := key.Ctx.FindObjectsInit(
+		key.SessionHandle, // key has SessionHandle from Hsm
+		[]*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, key.KeyLabel)})
+
+	if err != nil {
+		return 0, err
+	}
+
+	objs, _, err := key.Ctx.FindObjects(key.SessionHandle, 1)
+	defer key.Ctx.FindObjectsFinal(key.SessionHandle)
+	if len(objs) == 0 {
+		return 0, errors.New("no keys found")
+	}
+	if len(objs) > 1 {
+		return objs[0], errors.New(fmt.Sprintf("%d keys found", len(objs)))
+	}
+
+	return objs[0], err
+}
+
 func New(library string, tokenLabel string, pin *string) *Hsm {
 	newHsm := new(Hsm)
 
