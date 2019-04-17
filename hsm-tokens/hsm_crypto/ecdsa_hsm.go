@@ -1,6 +1,7 @@
 package hsm_crypto
 
 import (
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"errors"
 	// "fmt"
@@ -104,4 +105,32 @@ func getCurveParamsInDER(curveName string) (params []byte, err error) {
 		return []byte{}, err
 	}
 	return params, nil
+}
+
+func (pubKey *PublicKey) Export() (key ecdsa.PublicKey, err error) {
+
+	if !pubKey.isInitialized() {
+		return key, errors.New("hsm has not been initialized")
+	}
+
+	sessionHandle := pubKey.SessionHandle
+
+	keyHandle, err := pubKey.FindKeyHandle()
+	if err != nil {
+		return key, err
+	}
+
+	curveDER, err := pubKey.Ctx.GetAttributeValue(
+		sessionHandle,
+		keyHandle,
+		[]*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_ECDSA_PARAMS, nil)},
+	)
+	if err != nil {
+		return key, err
+	}
+
+	// 	modulusAtt, err := pubKey.Ctx.GetAttributeValue(sessionHandle, keyHandle, []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_MODULUS, nil)})
+	// 	if err != nil {
+	// 		return key, err
+	// 	}
 }
