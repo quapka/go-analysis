@@ -11,6 +11,8 @@ import (
 	"github.com/quapka/go-analysis/hsm-tokens/hsm_crypto"
 	"io"
 	"math/big"
+	"reflect"
+	"strings"
 )
 
 // values copied from the RFC #6637 section 11.
@@ -27,7 +29,7 @@ func curveFromDER(DER string) elliptic.Curve {
 		P_521_DER: elliptic.P521(),
 	}
 
-	return curveNamesFromDER[DER]
+	return curveNamesFromDER[strings.ToUpper(DER)]
 }
 
 type PublicKey struct {
@@ -74,7 +76,7 @@ func (key *PublicKey) FindKeyHandle() (pkcs11.ObjectHandle, error) {
 
 // FIXME what is priv if it has not been initialized?
 // maybe return pointer and return nil in case of a error
-func GenerateKey(c elliptic.Curve, rand io.Reader, hsmInstance *hsm_crypto.Hsm) (privKey PrivateKey, err error) {
+func GenerateKeyPair(c elliptic.Curve, rand io.Reader, hsmInstance *hsm_crypto.Hsm) (privKey PrivateKey, err error) {
 
 	if !hsmInstance.IsInitialized() {
 		return privKey, errors.New("hsm has not been initialized")
@@ -108,6 +110,7 @@ func GenerateKey(c elliptic.Curve, rand io.Reader, hsmInstance *hsm_crypto.Hsm) 
 		// TODO use tokenLabel - to link a key to a token, but slightly redundant
 		// pkcs11.NewAttribute(pkcs11.CKA_LABEL, tokenLabel),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, publicKeyLabel),
+		// pkcs11.NewAttribute(pkcs11.CKF_EC_UNCOMPRESS, true),
 	}
 	privateKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
@@ -118,6 +121,7 @@ func GenerateKey(c elliptic.Curve, rand io.Reader, hsmInstance *hsm_crypto.Hsm) 
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, privateKeyLabel),
+		// pkcs11.NewAttribute(pkcs11.CKF_EC_UNCOMPRESS, true),
 	}
 
 	publicObjHandle, privateObjHandle, err := hsmInstance.Ctx.GenerateKeyPair(
@@ -185,25 +189,42 @@ func (pubKey *PublicKey) Export() (key ecdsa.PublicKey, err error) {
 		return key, err
 	}
 
-	// ecdsaPoint, err := pubKey.Ctx.GetAttributeValue(
-	// 	sessionHandle,
-	// 	keyHandle,
-	// 	[]*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, nil)},
-	// )
-	// if err != nil {
-	// 	return key, err
-	// }
+	ecdsaPoint, err := pubKey.Ctx.GetAttributeValue(
+		sessionHandle,
+		keyHandle,
+		[]*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, nil)},
+	)
 
+	fmt.Println(hex.EncodeToString(ecdsaPoint[0].Value))
+	if err != nil {
+		return key, err
+	}
+
+	fmt.Println("Point")
+	fmt.Println(reflect.TypeOf(ecdsaPoint[0].Value).String())
+	points := ecdsaPoint[0].Value[1:]
+	// xHEX := ecdsaPoint[0].Value[1 : len(ecdsaPoint[0].Value)/2]
+	// yHEX := ecdsaPoint[0].Value[len(ecdsaPoint[0].Value)/2:]
+	xHEX := points[:len(points)/2]
+	yHEX := points[len(points)/2:]
+	// fmt.Println(len(ecdsaPoint[0].Value))
+	// fmt.Println(len(xHEX))
+	// fmt.Println(len(yHEX))
+	// fmt.Println(hex.EncodeToString(ecdsaPoint[0].Value))
+	// fmt.Println(hex.EncodeToString(xHEX))
+	// fmt.Println(hex.EncodeToString(yHEX))
+	// fmt.Println(len(ecdsaPoint[0].Value))
 	curveDER := hex.EncodeToString(ecdsaParams[0].Value)
+	fmt.Println(curveDER)
 	curve := curveFromDER(curveDER)
 
-	_ = ecdsa.PublicKey{curve, new(big.Int), new(big.Int)}
-	return key, err
+	X := new(big.Int)
+	X.SetString(hex.EncodeToString(xHEX), 16)
 
-	// 	modulusAtt, err := pubKey.Ctx.GetAttributeValue(sessionHandle, keyHandle, []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_MODULUS, nil)})
-	// 	if err != nil {
-	// 		return key, err
-	// 	}
+	Y := new(big.Int)
+	Y.SetString(hex.EncodeToString(yHEX), 16)
+	key = ecdsa.PublicKey{curve, X, Y}
+	return key, err
 }
 
 func (privKey *PrivateKey) sign(digest []byte, m []*pkcs11.Mechanism) (signature []byte, err error) {
