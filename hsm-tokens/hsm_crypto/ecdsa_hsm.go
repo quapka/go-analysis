@@ -3,6 +3,7 @@ package hsm_crypto
 import (
 	"crypto/elliptic"
 	"errors"
+	// "fmt"
 	"encoding/hex"
 	"github.com/miekg/pkcs11"
 	"io"
@@ -13,6 +14,9 @@ import (
 const P_256_DER = "06082A8648CE3D030107"
 const P_384_DER = "06052B81040022"
 const P_521_DER = "06052B81040023"
+
+// FIXME what is priv if it has not been initialized?
+// maybe return pointer and return nil in case of a error
 func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv PrivateKey, err error) {
 
 	if !hsmInstance.isInitialized() {
@@ -44,9 +48,6 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		pkcs11.NewAttribute(pkcs11.CKA_ECDSA_PARAMS, ecdsaParams),
-		// TODO do not fix public exponent
-		// pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
-		// pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, 2048),
 		// TODO use tokenLabel - to link a key to a token, but slightly redundant
 		// pkcs11.NewAttribute(pkcs11.CKA_LABEL, tokenLabel),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, publicKeyLabel),
@@ -56,17 +57,16 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_ECDSA),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-
 		// pkcs11.NewAttribute(pkcs11.CKA_LABEL, tokenLabel),
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, privateKeyLabel),
 	}
+
 	publicObjHandle, privateObjHandle, err := hsmInstance.Ctx.GenerateKeyPair(
 		hsmInstance.SessionHandle,
 		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA_KEY_PAIR_GEN, nil)},
 		publicKeyTemplate,
-
 		privateKeyTemplate)
 	if err != nil {
 		return priv, err
