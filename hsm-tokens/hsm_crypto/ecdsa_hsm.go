@@ -17,10 +17,10 @@ const P_521_DER = "06052B81040023"
 
 // FIXME what is priv if it has not been initialized?
 // maybe return pointer and return nil in case of a error
-func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv PrivateKey, err error) {
+func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (privKey PrivateKey, err error) {
 
 	if !hsmInstance.isInitialized() {
-		return priv, errors.New("hsm has not been initialized")
+		return privKey, errors.New("hsm has not been initialized")
 	}
 
 	labelSize := 64
@@ -28,17 +28,17 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 	publicKeyLabel := make([]byte, labelSize)
 	_, err = rand.Read(publicKeyLabel)
 	if err != nil {
-		return priv, err
+		return privKey, err
 	}
 	privateKeyLabel := make([]byte, labelSize)
 	_, err = rand.Read(privateKeyLabel)
 	if err != nil {
-		return priv, err
+		return privKey, err
 	}
 
 	ecdsaParams, err := getCurveParamsInDER(c.Params().Name)
 	if err != nil {
-		return priv, err
+		return privKey, err
 	}
 
 	// TODO reason about the attributes we use - which we need and why
@@ -69,20 +69,20 @@ func GenerateECDSAKey(c elliptic.Curve, rand io.Reader, hsmInstance *Hsm) (priv 
 		publicKeyTemplate,
 		privateKeyTemplate)
 	if err != nil {
-		return priv, err
+		return privKey, err
 	}
 
-	priv.PublicKey = PublicKey{
+	privKey.PublicKey = PublicKey{
 		hsmInstance,
 		publicKeyLabel,
 		publicObjHandle,
 	}
-	priv = PrivateKey{
-		priv.PublicKey,
+	privKey = PrivateKey{
+		privKey.PublicKey,
 		privateKeyLabel,
 		privateObjHandle,
 	}
-	return priv, nil
+	return privKey, nil
 
 }
 
