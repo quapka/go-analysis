@@ -1,16 +1,13 @@
 package main
 
 import (
+	"../util"
 	"crypto/elliptic"
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"github.com/akamensky/argparse"
-	"io/ioutil"
 	"log"
-	"math/big"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -28,7 +25,7 @@ func main() {
 	}
 
 	// load input data as [][]string
-	data, err := loadInputData(*inputFileName)
+	data, err := util.LoadInputData(*inputFileName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -41,88 +38,56 @@ func main() {
 
 	p256 := elliptic.P256()
 
-	// write column headers
+	// new csv writer, separator = ;
+	w := csv.NewWriter(outFile)
+	w.Comma = ';'
+
+	// get row of column headers
+	var headers []string
 	for _, row := range data {
 		inputLabel := row[0]
-		// write input label (column header)
-		if _, err := outFile.WriteString(inputLabel + ";"); err != nil {
-			log.Fatal(err)
-		}
+		headers = append(headers, inputLabel)
 	}
-
-	// write endline
-	if _, err := outFile.WriteString("\n"); err != nil {
+	// write row of column headers
+	if err := w.Write(headers); err != nil {
 		log.Fatal(err)
 	}
+	w.Flush()
 
 	// iterate over rows
 	for i := 0; i < *numIterationArg; i++ {
+		// get row of values
+		var values []string
 		// iterate over columns
 		for _, row := range data {
 			// input for the measured function
-			scalar, err := stringToIntBytes(row[1])
+			scalar, err := util.StringToIntBytes(row[1], 16)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			// timing
 			start := time.Now()
-			_, _ = p256.ScalarBaseMult(scalar) // measured function
+
+			_, _ = p256.Params().ScalarBaseMult(scalar) // measured function
+
 			end := time.Now()
 			elapsed := end.Sub(start)
 			t1 := elapsed.Nanoseconds()
 
-			// write t1
-			if _, err := outFile.WriteString(fmt.Sprintf("%d;", t1)); err != nil {
-				log.Fatal(err)
-			}
+			values = append(values, fmt.Sprintf("%d", t1))
 
 		}
 
-		// write endline
-		if _, err := outFile.WriteString("\n"); err != nil {
+		// write row of values
+		if err := w.Write(values); err != nil {
 			log.Fatal(err)
 		}
+		w.Flush()
 	}
 
 	// close outfile
 	if err := outFile.Close(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-// Reads file as csv separated with semicolon.
-func loadInputData(fileName string) ([][]string, error) {
-
-	// read whole file into data
-	data, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-
-	// new csv reader, separator = ;
-	r := csv.NewReader(strings.NewReader(string(data)))
-	r.Comma = ';'
-
-	// read all
-	result, err := r.ReadAll()
-	if err != nil {
-		return nil, err
-	}
-
-	return result, err
-}
-
-// Converts a number represented as decimal string into bytes.
-// Error if the string does not represent a decimal number.
-func stringToIntBytes(input string) ([]byte, error) {
-
-	value := new(big.Int)
-
-	value, ok := value.SetString(input, 10)
-	if !ok {
-		return nil, errors.New("Cannot convert \"" + input + "\" into a number.")
-	}
-
-	return value.Bytes(), nil
 }
