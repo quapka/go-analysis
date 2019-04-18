@@ -1,0 +1,174 @@
+\documentclass[a4paper]{scrartcl}
+
+\usepackage{enumitem}
+\usepackage[colorlinks]{hyperref}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage{listings}
+\usepackage{listings-golang}
+\lstset{ % add your own preferences
+    frame=single,
+    basicstyle=\footnotesize,
+    keywordstyle=\color{red},
+    numbers=left,
+    numbersep=5pt,
+    showstringspaces=false,
+    stringstyle=\color{blue},
+    tabsize=4,
+    language=Golang % this is it !
+}
+% Template for homework assignment @ FI muni
+
+% Homework setup
+\newcommand{\authorName}{Mgr.~Vladim\'{i}r Sedl\'{a}\v{c}ek, Bc.~Jan~Kvapil, Bc.~Ondřej Kr\v{c}ma}
+\newcommand{\courseID}{\texttt{PV204}}
+\newcommand{\homeworkID}{\texttt{Report about HSM support implementation}}
+
+\usepackage{amsthm}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+% Create a nice header
+\fancyhead[L]{\courseID:\homeworkID\\\authorName}
+% \fancyhead[C]{\authorName}
+\fancyhead[R]{\today}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\subtitle{}
+
+\begin{document}
+
+% \maketitle
+
+\section{Useful links}
+Link to the source code on Github: \url{https://github.com/quapka/go-analysis/tree/master/hsm-tokens}.\\
+Link to Google Drive folder with presentation and code snippets: \url{https://drive.google.com/drive/u/0/folders/1k-LB2oLIKyeriAn9pTMpsX8HDSw_BLtQ}.
+
+\section{High-level description of our solution }
+The goal of his task was to move the sensitive operations from the Go library to a PKCS\#11 token (using SoftHSM). In particular, we were supposed to focus on RSA and ECC: key generation and export, signatures, decryptions and ECDH. We needed to work with SoftHSM, which is written in C, so we found a a PKCS\#11 wrapper for Go: \url{https://github.com/miekg/pkcs11}.
+
+We tried to create a flexible solution that should have an interface compatible with the one used for the corresponding functionalities in Go.
+%Bonus: verify and encrypt implemented (to facilitate testing)
+
+
+\section{An overview of the implemented functionality}
+For RSA, we have implemented the key pair generation, export of the public key, signing and signature verification, encryption and decryption. For ECDSA, it was the key pair generation, export of the public key, signing and signature verification. We have almost implemented ECDH, but got stuck on how to properly fill the PKCS\#11 \verb+CK_ECDH1_DERIVE_PARAMS+ structure and pass it on to the HSM. Apart from that, there are a few interesting functions for managing the HSM such as \lstinline[columns=fixed]{findSlot()}, which searches through the available slots for the appropriate token (based on the token label) and fails in case of either zero or mutliple matches. Another interesting function is \lstinline[columns=fixed]{FindKeyHandle()}, which looks for the token for the object handle of the key and performs similar checks.
+
+\section{Comparison with the original Go implementation}
+We have tried to follow the current Go implementation of RSA and ECDSA as closely as possible. To achieve that, we have the same package hierarchy, similar structures for private and public keys and since Go partially uses interfaces (e.g., \lstinline[columns=fixed]|type Signer interface {...}|), we have followed them as well.\\
+
+\textit{$\bullet$ How to ensure the value of the private key is never exposed on the PC and is only present inside the token?}
+
+The private key is never directly accessible to the developer. He can call the set of functions (as from the \lstinline[columns=fixed]{Signer} interface above) like \lstinline[columns=fixed]{Sign}, \lstinline[columns=fixed]{Decrypt} only through\\ \lstinline[columns=fixed]{type PrivateKey struct}.\\
+
+\textit{$\bullet$ How to obtain the PIN from the user?}\\
+\indent\textit{$\bullet$ How and where to configure the path to the PKCS\#11 dll/so library?}
+
+The handling of both of the PIN and the path to PKCS\#11 lib is left for the developer. He can set them as environment variables, get them interactively from the user, etc. An example setup can be seen in \ref{lst:hsmInit}. Since we accept only a pointer to the PIN, we leave the burden of safely destroying the PIN to the developer. This is reasonably secure in the expected scenarios.
+
+\begin{lstlisting}[caption=Comparison of the original and HSM implementations, captionpos=b, label={lst:hsmInit}]
+    pathToLib := "/usr/lib/softhsm/libsofthsm2.so"
+    tokenLabel := "pv204"
+    pin := "1234" // pin hardcoded only for the sake of an example!
+    hsmInstance := hsm_crypto.New(pathToLib, tokenLabel, &pin)
+    err := hsmInstance.Initialize()
+    defer hsmInstance.Finalize()
+    if err != nil {
+        log.Fatal(err)
+    }
+\end{lstlisting}
+
+After the setup in \ref{lst:hsmInit}, we can use \lstinline[columns=fixed]{hsmInstance} for the function that generates RSA/ECC keys. To demonstrate that using the HSM in already existing code is not that difficult, please refer to the examples \ref{lst:rsaComp} that generate an RSA key. The function \lstinline[columns=fixed]{getGoRSAKey} is using the original implementation, the second function \lstinline[columns=fixed]{getHSMRSAKey} is using the one implemented by us.
+
+\begin{lstlisting}[caption=Initialization of the HSM, captionpos=b, label={lst:rsaComp}]
+func getGoRSAKey() (key *rsa.PrivateKey, err error) {
+    reader := rand.Reader
+    bitSize := 2048
+    key, err = rsa.GenerateKey(reader, bitSize)
+    if err != nil {
+        return nil, err
+    }
+    return key, nil
+}
+
+func getHSMRSAKey(hsmInstance *hsm_crypto.Hsm)
+(key rsa_hsm.PrivateKey, err error) {
+    bitSize := uint(2048)
+    key, err = rsa_hsm.GenerateKey(bitSize, hsmInstance)
+    if err != nil {
+        return key, err
+    }
+    return key, nil
+}
+\end{lstlisting}
+
+Notable differences include the need to pass the \lstinline[columns=fixed]{hsmInstance} parameter. Even the package name does not matter much, because \lstinline[columns=fixed]{rsa_hsm} can be imported under a different name (e.g., \lstinline[columns=fixed]{rsa}). Later we have discovered that we are not returning a pointer to the \lstinline[columns=fixed]{PrivateKey} structure as in the original implementation, so this should be fixed in order to make it even more consistent.
+
+The other functions do not differ too much from the original ones either. E.g., the \lstinline[columns=fixed]{PrivateKey.Sign} method is not using the provided rand (quite logically, the HSM is expected to have its own and hopefully stronger source of randomness).\\
+
+\textit{$\bullet$ How to match and find private key on the token based on the key\_ctx used by library?}
+
+This is done by the \lstinline[columns=fixed]{FindKeyHandle} function, which similarly to \lstinline[columns=fixed]{findSlot} iterates over the objects on the HSM and either returns the handle (based on a 64 byte random value saved inside the key structure) or an error in case of zero or multiple matching objects. This function is now a method of the public key, but should be reimplemented to work on any object -- a private key, a public key, a shared secret key, etc.
+
+\section{Problems, shortcomings, solutions and the future}
+
+\subsection{PKCS\#11 headaches}
+Working with PKCS\#11 was not straightforward in any case. It took us some time to provide the correct information to the templates that are expected by the PKCS\#11 wrapper functions. The documentation (e.g., this one \url{http://docs.oasis-open.org/pkcs11/pkcs11-base/v2.40/os/pkcs11-base-v2.40-os.html}) helped us only to a certain extent. For a better understanding, we have googled for as many examples (even from different languages/bindings) as possible.
+
+\subsection{Too rigid implementation}
+At this moment, our implementation is still a prototype -- but a working one. This means that we have hardcoded mechanisms and parameters in several functions. For example, in the \lstinline[columns=fixed]{PrivateKey.Sign}, we do not use the parameter which specifies the hash function that should be used on the data before signing. This is of course unwanted, but it is not a major issue, rather a next logical step in the perfection of the implementation.
+
+Similarly, the problems with PKCS\#11 stopped us from finishing the implementation of the ECDH shared secret derivation function. We have implemented most of it, but it is not quite complete. Of course we could hack our way around that, by getting the public key value (e.g., from the server), getting the private value from the HSM and manually multiplying them, but this would contradict the claim about the security of the private key (never leaving the HSM).
+
+\subsection{The restart of a session}
+Restarting the session is a reasonable scenario that might occur. However, we did not handle this directly. That means that at this moment the developer would have to track the livelyness of the session and in case it dies, reinitialize the particular structures and reassign the object handles. We could proceed further and make this easier for the developer, but at this moment we have only discussed what the possible scenarios could be and decided not to make the library code \textit{too} clever and potentially introduce another flaw (maybe allowing the attacker to plug in their card etc.).
+
+\subsection{Documentation and tests}
+At this moment, we have almost no documentation -- again, the code is a working prototype. Apart from that, it would also be nice to have a proper test suite. But that is hard to do in case of using HSM (testing against SoftHSM does not test the whole pipeline). But we could have a general test suite that each user/developer could run against a particular HSM and therefore verify the functionality. We do, however, have some basic examples that provide basic assurance of the funcionality.
+
+\subsection{Looking into the future}
+Making upstream changes seems quite a challenge, but the basic building blocks are there. There are a few questions though -- our code uses a third party PKCS\#11 binding that would also need to be included in the source code (it is not clear how big of a problem this might be). Our code also does not implement all the functionality of the Go's crypto package. But overall, we feel that our contribution might be of an interest to the original maintainers and therefore we are strongly considering at least putting the most interesting findings and references to the HSM implementation into an email and contacting the maintainers of Go.
+
+%% \includegraphics[scale=0.3]{private_go.png}\\
+%% \includegraphics[scale=0.3]{private_hsm.png}\\
+
+%\section{Code snippets}
+%%ADD MORE SNIPPETS AND COMMENTS
+
+%\includegraphics[scale=0.5]{hsm_struct}\\
+%\includegraphics[scale=0.5]{new}\\
+%\includegraphics[scale=0.5]{rsa_priv}\\
+%\includegraphics[scale=0.5]{main}\\
+%\includegraphics[scale=0.5]{tests}
+
+%\section{Problems we encountered}
+%How to resume a past session?
+
+%Additional considerations:
+%\begin{itemize}
+%\item How to obtain the PIN from the user?
+%\item How and where to configure the path to the PKCS\#11 dll/so library?
+%\item How to ensure the value of the private key is never exposed on the PC and is only present inside the token?
+%\item How to match and find private key on the token based on the key\_ctx used by library?
+%\end{itemize}
+%Answer to the first two questions: both of these are delegated to the user, our functions accept addresses as arguments. %NEEDS A LONGER ANSWER \\
+%Answers to the rest:\\
+
+%ECDH key derivation
+
+%\section{Summary}
+
+%%Some of the graphs were definitely interesting and it seems worth to do further investigation. Unfortunately, we had troubles to find big enough time windows to get together and do more detailed analysis of the results.
+
+
+%Contact Go implementers.
+% - show previous graphs
+% - PKCS11 implementation
+
+
+%Restart session
+%ECDH
+
+\end{document}
