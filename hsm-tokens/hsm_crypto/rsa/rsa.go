@@ -114,7 +114,7 @@ func exponentBytesToInt(bytes []byte) int {
 }
 
 // FIXME unused bitsize
-func GenerateRsaKey(bitSize uint, hsmInstance *hsm_crypto.Hsm) (privKey PrivateKey, err error) {
+func GenerateKey(bitSize uint, hsmInstance *hsm_crypto.Hsm) (privKey PrivateKey, err error) {
 
 	if !hsmInstance.IsInitialized() {
 		return privKey, errors.New("hsm has not been initialized")

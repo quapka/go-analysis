@@ -27,7 +27,7 @@ func main() {
 
 func hsmExampleRSA(hsmInstance *hsm_crypto.Hsm) {
 	bitSize := uint(1024)
-	privKey, _ := rsa_hsm.GenerateRsaKey(bitSize, hsmInstance)
+	privKey, _ := rsa_hsm.GenerateKey(bitSize, hsmInstance)
 	message := []byte("Hello World")
 
 	// test sign
