@@ -102,3 +102,24 @@ func hsmExampleECDSA(hsmInstance *hsm_crypto.Hsm) {
 	// }
 	// _ = privKey
 }
+
+func getGoRSAKey() (key *rsa.PrivateKey, err error) {
+	reader := rand.Reader
+	bitSize := 2048
+
+	key, err = rsa.GenerateKey(reader, bitSize)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+func getHSMRSAKey(hsmInstance *hsm_crypto.Hsm) (key rsa_hsm.PrivateKey, err error) {
+	bitSize := uint(2048)
+
+	key, err = rsa_hsm.GenerateKey(bitSize, hsmInstance)
+	if err != nil {
+		return key, err
+	}
+	return key, nil
+}
