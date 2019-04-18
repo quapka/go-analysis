@@ -1,0 +1,99 @@
+\documentclass[a4paper]{scrartcl}
+
+\usepackage{enumitem}
+\usepackage[colorlinks]{hyperref}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage{listings}
+\usepackage{listings-golang}
+\lstset{ % add your own preferences
+    frame=single,
+    basicstyle=\footnotesize,
+    keywordstyle=\color{red},
+    numbers=left,
+    numbersep=5pt,
+    showstringspaces=false,
+    stringstyle=\color{blue},
+    tabsize=4,
+    language=Golang % this is it !
+}
+% Template for homework assignment @ FI muni
+
+% Homework setup
+\newcommand{\authorName}{Mgr.~Vladim\'{i}r Sedl\'{a}\v{c}ek, Bc.~Jan~Kvapil, Bc.~Ondřej Kr\v{c}ma}
+\newcommand{\courseID}{\texttt{PV204}}
+\newcommand{\homeworkID}{\texttt{Report about HSM support implementation}}
+
+\usepackage{amsthm}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+% Create a nice header
+\fancyhead[L]{\courseID:\homeworkID\\\authorName}
+% \fancyhead[C]{\authorName}
+\fancyhead[R]{\today}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\subtitle{}
+
+\begin{document}
+
+% \maketitle
+
+\section{Useful links}
+Link to the source code on Github: \url{https://github.com/quapka/go-analysis/tree/master/hsm-tokens}.\\
+Link to Google Drive folder with presentation and code snippets: \url{https://drive.google.com/drive/u/0/folders/1k-LB2oLIKyeriAn9pTMpsX8HDSw_BLtQ}.
+
+\section{High-level description of our solution }
+The goal of his task was to move the sensitive operations from the Go library to a PKCS\#11 token (using SoftHSM). In particular, we were supposed to focus on RSA and ECC: key generation and export, signatures, decryptions and ECDH. We needed to work with SoftHSM, which is written in C, so we found a a PKCS\#11 wrapper for Go: \url{https://github.com/miekg/pkcs11}.
+
+We tried to create a flexible solution that should have an interface compatible with the one used for the corresponding functionalities in Go.
+%Bonus: verify and encrypt implemented (to facilitate testing)
+
+
+\section{An overview of the implemented functionality}
+For RSA we've implemented key pair generation, signing and signature verification, encryption and decryption and export of the public key. For ECDSA signing and signature verification and export of the public key We've almost implemented ECDH, but got stuck on how to properly fill the PKCS\#11 \verb+CK_ECDH1_DERIVE_PARAMS+ structure and pass it on the HSM. Apart from that, there are few interesting functions for managing the HSM like \lstinline[columns=fixed]{findSlot()}, that searches the available slots for the appropriate token (based on the token label) and fails in case of either zero or mutliple matches. The second interesting function is \lstinline[columns=fixed]{FindKeyHandle()}, that searches the token for the object handle of the key.
+
+\section{Code snippets}
+%ADD MORE SNIPPETS AND COMMENTS
+
+\includegraphics[scale=0.5]{hsm_struct}\\
+\includegraphics[scale=0.5]{new}\\
+\includegraphics[scale=0.5]{rsa_priv}\\
+\includegraphics[scale=0.5]{main}\\
+\includegraphics[scale=0.5]{tests}
+
+\section{Problems we encountered}
+How to resume a past session?
+
+Additional considerations:
+\begin{itemize}
+\item How to obtain the PIN from the user?
+\item How and where to configure the path to the PKCS\#11 dll/so library?
+\item How to ensure the value of the private key is never exposed on the PC and is only present inside the token?
+\item How to match and find private key on the token based on the key\_ctx used by library?
+\end{itemize}
+Answer to the first two questions: both of these are delegated to the user, our functions accept addresses as arguments. %NEEDS A LONGER ANSWER \\
+Answers to the rest:\\
+
+ECDH key derivation
+
+\section{Summary}
+
+%Some of the graphs were definitely interesting and it seems worth to do further investigation. Unfortunately, we had troubles to find big enough time windows to get together and do more detailed analysis of the results.
+
+
+Contact Go implementers.
+ - show previous graphs
+ - PKCS11 implementation
+
+
+Comparison example
+Restart session
+ECDH
+
+PIN se predava jako pointer
+
+\end{document}
