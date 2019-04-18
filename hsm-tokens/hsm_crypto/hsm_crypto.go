@@ -88,6 +88,7 @@ func (hsm *Hsm) IsInitialized() bool {
 }
 
 func (hsm *Hsm) findSlot() (slotID uint, err error) {
+	counter := 0
 	if !hsm.IsInitialized() {
 		return 0, errors.New("hsm has not been initialized")
 	}
@@ -96,8 +97,6 @@ func (hsm *Hsm) findSlot() (slotID uint, err error) {
 	if err != nil {
 		return 0, err
 	}
-	// var pkcs11.SlotInfo slotInfo
-	// var pkcs11.TokenInfo tokenInfo
 
 	for _, slot := range slots {
 		if slot == 0 {
@@ -105,15 +104,17 @@ func (hsm *Hsm) findSlot() (slotID uint, err error) {
 		}
 		fmt.Printf("slot: %d", slot)
 		fmt.Println()
-		// slotInfo, err := GetSlotInfo(slot)
 		tokenInfo, err := hsm.Ctx.GetTokenInfo(slot)
 		if err != nil {
 			return 0, err
 		}
 		if tokenInfo.Label == hsm.hsmInfo.tokenLabel {
 			slotID = slot
-			break
+			counter = counter + 1
 		}
+	}
+	if counter != 1 {
+		return 0, errors.New(fmt.Sprintf("Found '%d' tokens with the same label '%s'", counter, hsm.hsmInfo.tokenLabel))
 	}
 
 	return slotID, nil
