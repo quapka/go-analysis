@@ -47,7 +47,7 @@ Link to the source code on Github: \url{https://github.com/quapka/go-analysis/tr
 Link to Google Drive folder with presentation and code snippets: \url{https://drive.google.com/drive/u/0/folders/1k-LB2oLIKyeriAn9pTMpsX8HDSw_BLtQ}.
 
 \section{High-level description of our solution }
-The goal of his task was to move the sensitive operations from the Go library to a PKCS\#11 token (using SoftHSM). In particular, we were supposed to focus on RSA and ECC: key generation and export, signatures, decryptions and ECDH. We needed to work with SoftHSM, which is written in C, so we found a a PKCS\#11 wrapper for Go: \url{https://github.com/miekg/pkcs11}.
+The goal of his task was to move the sensitive operations from the Go library to a PKCS\#11 token (using SoftHSM). In particular, we were supposed to focus on RSA and ECC: key generation and export, signatures, decryptions and ECDH. We needed to work with SoftHSM, which is written in C, so we found a PKCS\#11 wrapper for Go: \url{https://github.com/miekg/pkcs11}.
 
 We tried to create a flexible solution that should have an interface compatible with the one used for the corresponding functionalities in Go.
 %Bonus: verify and encrypt implemented (to facilitate testing)
@@ -68,7 +68,7 @@ The private key is never directly accessible to the developer. Only through\\ \l
 
 Handling of both (PIN and path to PKCS\#11 lib) is left for the developer. He can set them as environment variables, get them interactively from the user, etc. An example setup can be seen in \ref{lst:hsmInit}. Since we accept only a pointer to the PIN we leave the burder of safely destroying the PIN to the developer. This is reasonably secure in expected scenarios.
 
-\begin{lstlisting}[caption=Comparison of the original and HSM implementations, captionpos=b, label={lst:hsmInit}]
+\begin{lstlisting}[caption=Initialization of the HSM, captionpos=b, label={lst:hsmInit}]
     pathToLib := "/usr/lib/softhsm/libsofthsm2.so"
     tokenLabel := "pv204"
     pin := "1234" // pin hardcoded only for the sake of an example!
@@ -82,7 +82,7 @@ Handling of both (PIN and path to PKCS\#11 lib) is left for the developer. He ca
 
 After the setup in \ref{lst:hsmInit} we can use \lstinline[columns=fixed]{hsmInstance} for function that generate RSA/ECDSA keys. To show, that to use the HSM in existing code is not that difficult see the examples \ref{lst:rsaComp}, that generates a RSA key. The function \lstinline[columns=fixed]{getGoRSAKey} is using the original implementation, the second function \lstinline[columns=fixed]{getHSMRSAKey} is using our.
 
-\begin{lstlisting}[caption=Initialization of the HSM, captionpos=b, label={lst:rsaComp}]
+\begin{lstlisting}[caption=Comparison of the original and HSM implementations, captionpos=b, label={lst:rsaComp}]
 func getGoRSAKey() (key *rsa.PrivateKey, err error) {
     reader := rand.Reader
     bitSize := 2048
@@ -123,10 +123,10 @@ At this moment our implementation is still a prototype -- but a working one. It 
 Similarly, the problems with PKCS\#11 stopped us from finishing the implementation of ECDH shared secret derivation function. We've implemented most of it, but it is not quite there. Of course, we could hack our way around that, by getting the public value (e.g. from the server) and getting the private value from the HSM and manually multiple them, but this would contracted the claim about the safeness of the private key (never leaving the HSM).
 
 \subsection{The restart of a session}
-Restarting the session is a logical think, that might happen. However, we did not handle this direclty. That means, that at this moment the developer would have to track the aliveness of the session and in case it dies reinitialize the particular structures and reassign the object handles. We could proceed further and make this easier for the developer, but at this moment we've only discussed, what the possible scenarios could be and decided not to make the library code \textit{too} clever and potentially introduce another flaw (maybe allowing the attacker to plug in their card etc.).
+Restarting the session is a logical thing, that might happen. However, we did not handle this directy. That means, that at this moment the developer would have to track the aliveness of the session and in case it dies reinitialize the particular structures and reassign the object handles. We could proceed further and make this easier for the developer, but at this moment we've only discussed, what the possible scenarios could be and decided not to make the library code \textit{too} clever and potentially introduce another flaw (maybe allowing the attacker to plug in their card etc.).
 
 \subsection{Documentation and tests}
-At this moment we do not have almost any documentation -- again, the code is a working prototype. Apart from documentation it would be nice to have a proper test suite. But that's hard to do in case of using HSM (testing against SoftHSM does not test the whole Pipeline). But we could have a general test suite, that each user/developer could run against a particular HSM and therefore verify the functionality. We do, however, have basic examples, that provide basic assurance of the funcitonality.
+At this moment we do not have almost any documentation -- again, the code is a working prototype. Apart from documentation it would be nice to have a proper test suite. But that's hard to do in case of using HSM (testing against SoftHSM does not test the whole Pipeline). But we could have a general test suite, that each user/developer could run against a particular HSM and therefore verify the functionality. We do, however, have basic examples, that provide assurance of the functionality.
 
 \subsection{Looking into the future}
 Making upstream changes seems quite a challenge. But the basic building blocks are there. There are few question though -- our code uses 3rd party PKCS\#11 binding, that would also need to be included in the source code (depends, how big of a problem that might be). Our code also does not implement all the functionality of the Go's crypto package. But overall we feel like our contribution might be of an interest to the original maintainers and therefore we are strongly considering at least putting the most interesting findings and references to the HSM implementation into an email and contacting the maintainers of Go.
